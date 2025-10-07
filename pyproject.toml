@@ -1,0 +1,7 @@
+[project]
+name = "snippet-checker"
+version = "0.1.0"
+description = "Check the output and formatting of code snippets"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
