@@ -112,6 +112,10 @@ def get_anki_notes(note_type: str, tag: str) -> list:
     return notes
 
 
+def clean(output: str):
+    return output.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ")
+
+
 def main():
     argument_parser = ArgumentParser()
     argument_parser.add_argument("note_type")
@@ -126,6 +130,7 @@ def main():
     for note in notes:
         code, output, _, _ = note.fields
         code = code.removeprefix('<pre><code class="lang-python">').removesuffix("</code></pre>")
+        output = clean(output)
         id = note.id
         questions.append(Question(id, code, output))
 
