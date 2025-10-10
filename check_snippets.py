@@ -15,6 +15,7 @@ def canonicalize(output: str) -> str:
     output = canonicalize_traceback(output)
     return output
 
+
 def canonicalize_memory_addresses(output: str) -> str:
     memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
     seen = set()
@@ -143,7 +144,7 @@ def main():
     for question in questions:
         print(f"Checking output of {question.id}...", end="", flush=True)
         actual_output = str(question.snippet.run())
-        canonicalized_actual_output = canonicalize(output)
+        canonicalized_actual_output = canonicalize(actual_output)
         canonicalized_expected_output = canonicalize(question.expected_output)
         if canonicalized_expected_output != canonicalized_actual_output:
             print("❌")
