@@ -1,11 +1,12 @@
 import os
+import re
 import subprocess
 import time
+from argparse import ArgumentParser
 from pathlib import Path
 
 import docker
-
-import re
+from anki.storage import Collection
 
 
 def canonicalize_memory_addresses(output: str) -> str:
@@ -64,7 +65,7 @@ class Snippet:
         self.code = code
         self.python_version = python_version
 
-    def run(self) -> dict[int, str]:
+    def run(self) -> Output:
         container = self.client.containers.run(
             f"python:{self.python_version}",
             command=["python", "-u", "-c", self.code],
@@ -90,8 +91,56 @@ class Snippet:
         return called_process.stdout
 
 
+class Question:
+    def __init__(self, id: str, code: str, expected_output: str):
+        self.id = id
+        self.snippet = Snippet(code)
+        self.expected_output = expected_output
+
+
+def get_anki_notes(note_type: str, tag: str) -> list:
+    path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
+    collection = Collection(str(path))
+    note_ids = collection.find_notes("")
+    all_notes = [collection.get_note(id) for id in note_ids]
+    notes = [
+        note
+        for note in all_notes
+        if tag in note.tags and note.note_type()["name"] == note_type  # type: ignore[index]
+    ]
+    return notes
+
+
 def main():
-    pass
+    argument_parser = ArgumentParser()
+    argument_parser.add_argument("note_type")
+    argument_parser.add_argument("tag")
+    args = argument_parser.parse_args()
+
+    print(f"Looking for notes with type {args.note_type} and tag {args.tag}.")
+    notes = get_anki_notes(note_type=args.note_type, tag=args.tag)
+    print(f"Found {len(notes)} notes")
+
+    questions = []
+    for note in notes:
+        code, output, _, _ = note.fields
+        code = code.removeprefix('<pre><code class="lang-python">').removesuffix(
+            "</code></pre>"
+        )
+        id = note.id
+        questions.append(Question(id, code, output))
+
+    failed_output = []
+    for question in questions:
+        print(f"Checking output of {question.id}...", end="", flush=True)
+        if question.expected_output != str(question.snippet.run()):
+            print("❌")
+            failed_output.append(question)
+
+    if failed_output:
+        print(
+            f"Unexpected output for {len(failed_output)} questions: {', '.join(str(qu.id) for qu in failed_output)}"
+        )
 
 
 if __name__ == "__main__":

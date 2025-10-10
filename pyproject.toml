@@ -5,6 +5,7 @@ description = "Check the output and formatting of code snippets"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "anki>=25.9.2",
     "docker>=7.1.0",
 ]
 
