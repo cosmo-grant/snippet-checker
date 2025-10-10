@@ -5,6 +5,22 @@ from pathlib import Path
 
 import docker
 
+import re
+
+
+def canonicalize_memory_addresses(output: str) -> str:
+    memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
+    seen = set()
+    canonicalized = output
+    for match in re.finditer(memory_address, output):
+        address = match.group()
+        if address in seen:
+            continue
+        seen.add(address)
+        canonicalized = canonicalized.replace(address, f"0x{len(seen)}")
+
+    return canonicalized
+
 
 class Output:
     def __init__(self, raw_output: dict[float, bytes]):

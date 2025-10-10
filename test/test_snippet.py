@@ -1,8 +1,9 @@
 from pathlib import Path
+from textwrap import dedent
 
 from pytest import mark
 
-from check_snippets import Snippet
+from check_snippets import Snippet, canonicalize_memory_addresses
 
 
 def get_snippets(dir):
@@ -44,3 +45,19 @@ def test_format_change():
     source_code = 'print("hello")'  # new newline at eof
     snippet = Snippet(source_code)
     assert snippet.format() == 'print("hello")\n'
+
+
+def test_canonicalize_memory_address():
+    output = dedent("""
+        <__main__.C object at 0x104cfa450>
+        <__main__.D object at 0x104cfa5d0>
+        <__main__.C object at 0x104cfa450>
+        """)
+    actual_canoncalized = canonicalize_memory_addresses(output)
+    expected_canonicalized = dedent("""
+        <__main__.C object at 0x1>
+        <__main__.D object at 0x2>
+        <__main__.C object at 0x1>
+    """)
+
+    assert expected_canonicalized == actual_canoncalized
