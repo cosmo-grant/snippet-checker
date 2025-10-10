@@ -1,3 +1,4 @@
+import difflib
 import os
 import re
 import subprocess
@@ -124,23 +125,25 @@ def main():
     questions = []
     for note in notes:
         code, output, _, _ = note.fields
-        code = code.removeprefix('<pre><code class="lang-python">').removesuffix(
-            "</code></pre>"
-        )
+        code = code.removeprefix('<pre><code class="lang-python">').removesuffix("</code></pre>")
         id = note.id
         questions.append(Question(id, code, output))
 
     failed_output = []
     for question in questions:
         print(f"Checking output of {question.id}...", end="", flush=True)
-        if question.expected_output != str(question.snippet.run()):
+        actual_output = str(question.snippet.run())
+        if question.expected_output != actual_output:
             print("❌")
+            diff = difflib.ndiff(
+                question.expected_output.splitlines(keepends=True),
+                actual_output.splitlines(keepends=True),
+            )
+            print("".join(diff))
             failed_output.append(question)
 
     if failed_output:
-        print(
-            f"Unexpected output for {len(failed_output)} questions: {', '.join(str(qu.id) for qu in failed_output)}"
-        )
+        print(f"Unexpected output for {len(failed_output)} questions: {', '.join(str(qu.id) for qu in failed_output)}")
 
 
 if __name__ == "__main__":
