@@ -21,7 +21,7 @@ def get_snippets(dir):
         with open(dir / "output.txt") as f:
             outputs.append(f.read())
 
-    return zip(snippets, outputs)
+    return zip(snippets, outputs, strict=False)
 
 
 @mark.parametrize("source_code, expected_output", get_snippets("ok"))
