@@ -22,6 +22,17 @@ def canonicalize_memory_addresses(output: str) -> str:
     return canonicalized
 
 
+def canonicalize_traceback(output: str) -> str:
+    traceback_except_for_last_line = re.compile(
+        r"Traceback \(most\ recent\ call\ last\):\n"  # start of traceback
+        r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
+    )
+    # a traceback's last line doesn't start with whitespace so won't be captured
+    canonicalized = re.sub(traceback_except_for_last_line, "", output)
+
+    return canonicalized
+
+
 class Output:
     def __init__(self, raw_output: dict[float, bytes]):
         self.raw_output = raw_output

@@ -3,7 +3,11 @@ from textwrap import dedent
 
 from pytest import mark
 
-from check_snippets import Snippet, canonicalize_memory_addresses
+from check_snippets import (
+    Snippet,
+    canonicalize_memory_addresses,
+    canonicalize_traceback,
+)
 
 
 def get_snippets(dir):
@@ -53,11 +57,27 @@ def test_canonicalize_memory_address():
         <__main__.D object at 0x104cfa5d0>
         <__main__.C object at 0x104cfa450>
         """)
-    actual_canoncalized = canonicalize_memory_addresses(output)
+    actual_canonicalized = canonicalize_memory_addresses(output)
     expected_canonicalized = dedent("""
         <__main__.C object at 0x1>
         <__main__.D object at 0x2>
         <__main__.C object at 0x1>
     """)
 
-    assert expected_canonicalized == actual_canoncalized
+    assert expected_canonicalized == actual_canonicalized
+
+
+def test_canonicalize_traceback():
+    output = dedent("""
+        Traceback (most recent call last):
+          File "<string>", line 1, in <module>
+            1 / 0
+            ~~^~~
+        ZeroDivisionError: division by zero
+        """).strip()
+    actual_canonicalized = canonicalize_traceback(output)
+    expected_canonicalized = dedent("""
+        ZeroDivisionError: division by zero
+        """).strip()
+
+    assert actual_canonicalized == expected_canonicalized
