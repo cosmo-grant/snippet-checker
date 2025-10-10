@@ -1,4 +1,5 @@
 import os
+import subprocess
 import time
 from pathlib import Path
 
@@ -50,6 +51,16 @@ class Snippet:
             delta = now - start
             raw_output[delta] = line
         return Output(raw_output)
+
+    def format(self) -> str:
+        called_process = subprocess.run(
+            ["ruff", "format", "-"],
+            check=True,
+            input=self.code,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        return called_process.stdout
 
 
 def main():

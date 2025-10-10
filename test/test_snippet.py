@@ -32,3 +32,15 @@ def test_limitations_snippet(source_code, expected_output):
     snippet = Snippet(source_code)
     actual_output = snippet.run()
     assert expected_output == str(actual_output)
+
+
+def test_format_no_change():
+    source_code = 'print("hello")\n'
+    snippet = Snippet(source_code)
+    assert snippet.format() == source_code
+
+
+def test_format_change():
+    source_code = 'print("hello")'  # new newline at eof
+    snippet = Snippet(source_code)
+    assert snippet.format() == 'print("hello")\n'
