@@ -118,7 +118,7 @@ def main():
     argument_parser.add_argument("tag")
     args = argument_parser.parse_args()
 
-    print(f"Looking for notes with type {args.note_type} and tag {args.tag}.")
+    print(f"Looking for notes with type '{args.note_type}' and tag '{args.tag}'.")
     notes = get_anki_notes(note_type=args.note_type, tag=args.tag)
     print(f"Found {len(notes)} notes")
 
@@ -141,6 +141,8 @@ def main():
             )
             print("".join(diff))
             failed_output.append(question)
+        else:
+            print("✅")
 
     if failed_output:
         print(f"Unexpected output for {len(failed_output)} questions: {', '.join(str(qu.id) for qu in failed_output)}")
