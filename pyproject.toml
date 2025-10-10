@@ -4,4 +4,18 @@ version = "0.1.0"
 description = "Check the output and formatting of code snippets"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "docker>=7.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipython>=9.6.0",
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "ruff>=0.14.0",
+    "types-docker>=7.1.0.20251009",
+]
+
+[tool.pytest.ini_options]
+pythonpath = "."
