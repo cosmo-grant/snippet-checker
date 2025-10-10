@@ -6,7 +6,15 @@ import docker
 
 
 class Output:
-    def __init__(self, output: dict[int, str]):
+    def __init__(self, raw_output: dict[float, bytes]):
+        self.raw_output = raw_output
+
+        output: dict[int, str] = {}
+        # insertion order should be ascending t, but let's be clear and cautious
+        for t in sorted(raw_output):
+            rounded_t = round(t)
+            line = raw_output[t].decode("utf-8")
+            output[rounded_t] = output.get(rounded_t, "") + line
         self.output = output
 
     def __str__(self) -> str:
@@ -35,13 +43,13 @@ class Snippet:
             detach=True,
         )
 
-        output = {}
+        raw_output = {}
         start = time.perf_counter()
         for line in container.logs(stream=True):  # blocks until \n
             now = time.perf_counter()
-            delta = round(now - start)
-            output[delta] = output.get(delta, "") + line.decode("utf-8")
-        return Output(output)
+            delta = now - start
+            raw_output[delta] = line
+        return Output(raw_output)
 
 
 def main():
