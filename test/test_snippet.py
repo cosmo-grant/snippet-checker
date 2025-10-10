@@ -5,12 +5,12 @@ from pytest import mark
 from check_snippets import Snippet
 
 
-def get_snippets():
+def get_snippets(dir):
     snippets = []
     outputs = []
-    snippets_dir = Path("./test/snippets")
+    target_dir = Path("./test/snippets") / dir
 
-    for dir in snippets_dir.iterdir():
+    for dir in target_dir.iterdir():
         with open(dir / "snippet.py") as f:
             snippets.append(f.read())
         with open(dir / "output.txt") as f:
@@ -19,8 +19,16 @@ def get_snippets():
     return zip(snippets, outputs)
 
 
-@mark.parametrize("source_code, expected_output", get_snippets())
-def test_snippet(source_code, expected_output):
+@mark.parametrize("source_code, expected_output", get_snippets("ok"))
+def test_ok_snippet(source_code, expected_output):
+    snippet = Snippet(source_code)
+    actual_output = snippet.run()
+    assert expected_output == str(actual_output)
+
+
+@mark.xfail
+@mark.parametrize("source_code, expected_output", get_snippets("limitations"))
+def test_limitations_snippet(source_code, expected_output):
     snippet = Snippet(source_code)
     actual_output = snippet.run()
     assert expected_output == str(actual_output)

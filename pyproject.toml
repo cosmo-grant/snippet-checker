@@ -19,3 +19,4 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = "."
+xfail_strict = true
