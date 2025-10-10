@@ -11,6 +11,7 @@ from anki.storage import Collection
 
 
 def canonicalize(output: str) -> str:
+    output = output.rstrip("\n")
     output = canonicalize_memory_addresses(output)
     output = canonicalize_traceback(output)
     return output
