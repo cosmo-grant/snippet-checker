@@ -2,6 +2,7 @@ import difflib
 import os
 import re
 import subprocess
+import sys
 import time
 from argparse import ArgumentParser
 from pathlib import Path
@@ -123,7 +124,7 @@ def clean(output: str):
     return output.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ")
 
 
-def main():
+def main() -> int:
     argument_parser = ArgumentParser()
     argument_parser.add_argument("note_type")
     argument_parser.add_argument("tag")
@@ -160,7 +161,10 @@ def main():
 
     if failed_output:
         print(f"Unexpected output for {len(failed_output)} questions: {', '.join(str(qu.id) for qu in failed_output)}")
+        return 1
+    else:
+        return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
