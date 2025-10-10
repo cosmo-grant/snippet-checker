@@ -5,6 +5,22 @@ from pathlib import Path
 import docker
 
 
+class Output:
+    def __init__(self, output: dict[int, str]):
+        self.output = output
+
+    def __str__(self) -> str:
+        result = ""
+        previous = 0
+        for t, line in self.output.items():
+            delta = t - previous
+            result += f"<~{delta}s>\n"
+            result += line
+            previous = t
+        result = result.removeprefix("<~0s>\n")
+        return result
+
+
 class Snippet:
     def __init__(self, code: str, python_version: str = "3.13"):
         os.environ["DOCKER_HOST"] = f"unix://{Path.home()}/.docker/run/docker.sock"
@@ -24,8 +40,8 @@ class Snippet:
         for line in container.logs(stream=True):  # blocks until \n
             now = time.perf_counter()
             delta = round(now - start)
-            output[delta] = line.decode("utf-8")
-        return output
+            output[delta] = output.get(delta, "") + line.decode("utf-8")
+        return Output(output)
 
 
 def main():
