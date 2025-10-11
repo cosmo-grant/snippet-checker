@@ -80,3 +80,20 @@ questions
 │   └── snippet.py
 ```
 
+
+## What if my snippet fails the check?
+
+The checker runs the snippet, gets the docker logs, represents those logs as a string (call that the _docker-output_), and canonicalizes the string.
+
+The checker also reads the given output (from the anki note or wherever) and canonicalizes it.
+
+It compares the canonicalized docker output with the canonicalized given output.
+
+If these are different, first check whether the given output is correct.
+
+If it's incorrect, the checker has done its job and you should update the given output.
+
+If it's correct, the checker has given a false negative, and you can either:
+  1. adapt the checker (e.g. improve canonicalizing)
+  2. adapt the snippet to something the checker can handle
+  3. mark the snippet (implementation TBD) as to be skipped
