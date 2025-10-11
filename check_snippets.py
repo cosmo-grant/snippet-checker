@@ -104,24 +104,60 @@ class Question:
     def __init__(self, id: str, code: str, expected_output: str):
         self.id = id
         self.snippet = Snippet(code)
-        self.expected_output = expected_output
+        self.output = expected_output
+
+    def diff_output(self) -> str:
+        """
+        Return the diff of canonicalized actual and expected output.
+
+        The returned string should be empty if the canonicalized outputs are equal.
+        Not all diff formats do this!
+        """
+        actual_output = str(self.snippet.run())
+        canonicalized_actual_output = canonicalize(actual_output)
+        canonicalized_expected_output = canonicalize(self.output)
+        diff = difflib.unified_diff(
+            canonicalized_actual_output.splitlines(keepends=True),
+            canonicalized_expected_output.splitlines(keepends=True),
+            fromfile="actual (canonicalized)",
+            tofile="expected (canonicalized)",
+        )
+        return "".join(diff)
 
 
-def get_anki_notes(note_type: str, tag: str) -> list:
-    path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
-    collection = Collection(str(path))
-    note_ids = collection.find_notes("")
-    all_notes = [collection.get_note(id) for id in note_ids]
-    notes = [
-        note
-        for note in all_notes
-        if tag in note.tags and note.note_type()["name"] == note_type  # type: ignore[index]
-    ]
-    return notes
+class AnkiQuestions:
+    def __init__(self, note_type: str, tag: str):
+        path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
+        self.collection = Collection(str(path))
 
+        print(f"Looking for notes with type '{note_type}' and tag '{tag}'.")
+        note_ids = self.collection.find_notes("")
+        notes = [self.collection.get_note(id) for id in note_ids]
+        self.notes = [
+            note
+            for note in notes
+            if tag in note.tags and note.note_type()["name"] == note_type  # type: ignore[index]
+        ]
+        print(f"Found {len(self.notes)} notes")
 
-def clean(output: str):
-    return output.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ")
+        questions = []
+        for note in self.notes:
+            code, output, _, _ = note.fields
+            code = code.removeprefix('<pre><code class="lang-python">').removesuffix("</code></pre>")
+            output = self.clean(output)
+            id = note.id
+            questions.append(Question(str(id), code, output))
+        self.questions = questions
+
+    def clean(self, output: str) -> str:
+        """
+        Replace html tags with text equivalents.
+
+        Anki note fields are html.
+        Code output notes' output field should have minimal markup.
+        Replace this markup with text equivalents, e.g. <br> -> newline.
+        """
+        return output.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ")
 
 
 def main() -> int:
@@ -130,31 +166,15 @@ def main() -> int:
     argument_parser.add_argument("tag")
     args = argument_parser.parse_args()
 
-    print(f"Looking for notes with type '{args.note_type}' and tag '{args.tag}'.")
-    notes = get_anki_notes(note_type=args.note_type, tag=args.tag)
-    print(f"Found {len(notes)} notes")
-
-    questions = []
-    for note in notes:
-        code, output, _, _ = note.fields
-        code = code.removeprefix('<pre><code class="lang-python">').removesuffix("</code></pre>")
-        output = clean(output)
-        id = note.id
-        questions.append(Question(id, code, output))
+    anki_questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
 
     failed_output = []
-    for question in questions:
+    for question in anki_questions.questions:
         print(f"Checking output of {question.id}...", end="", flush=True)
-        actual_output = str(question.snippet.run())
-        canonicalized_actual_output = canonicalize(actual_output)
-        canonicalized_expected_output = canonicalize(question.expected_output)
-        if canonicalized_expected_output != canonicalized_actual_output:
+        diff = question.diff_output()
+        if diff:
             print("❌")
-            diff = difflib.ndiff(
-                question.expected_output.splitlines(keepends=True),
-                actual_output.splitlines(keepends=True),
-            )
-            print("".join(diff))
+            print(diff)
             failed_output.append(question)
         else:
             print("✅")
