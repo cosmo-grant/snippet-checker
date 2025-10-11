@@ -79,6 +79,7 @@ class Snippet:
             f"python:{self.python_version}",
             command=["python", "-u", "-c", self.code],
             detach=True,
+            auto_remove=True,
         )
 
         raw_output = {}
