@@ -126,10 +126,18 @@ class Question:
         return "".join(diff)
 
 
+def should_fix() -> bool:
+    response = input("Overwrite output (only 'y' will lead to overwrite)? ")
+    return response == "y"
+
+
 class AnkiQuestions:
     def __init__(self, note_type: str, tag: str):
         path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
         self.collection = Collection(str(path))
+
+        self.failed_output: list[Question] = []
+        self.fixed_output: list[Question] = []
 
         print(f"Looking for notes with type '{note_type}' and tag '{tag}'.")
         note_ids = self.collection.find_notes("")
@@ -160,28 +168,46 @@ class AnkiQuestions:
         """
         return output.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ")
 
-    def check_output(self) -> list[Question]:
-        failed = []
+    def fix(self, question: Question) -> None:
+        "Write a canonicalized output of the given question's snippet to the anki database."
+
+        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
+        output = note.fields[1]
+        output = str(question.snippet.run())
+        output = canonicalize_traceback(output)
+        note.fields[1] = output
+        self.collection.update_note(note)
+        self.fixed_output.append(question)
+        print("Fixed")
+
+    def check_output(self, offer_fix: bool) -> None:
         for question in self.questions:
             print(f"Checking output of {question.id}...", end="", flush=True)
             diff = question.diff_output()
             if diff:
                 print("❌")
                 print(diff)
-                failed.append(question)
+                self.failed_output.append(question)
+                if offer_fix:
+                    response = should_fix()
+                    if response:
+                        self.fix(question)
+
             else:
                 print("✅")
+
 
 def main() -> int:
     argument_parser = ArgumentParser()
     argument_parser.add_argument("note_type")
     argument_parser.add_argument("tag")
+    argument_parser.add_argument("--fix-output", action="store_true")
     args = argument_parser.parse_args()
 
     questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
-    failed = questions.check_output()
-    if failed:
-        print(f"Unexpected output for {len(failed)} questions")
+    questions.check_output(args.fix_output)
+    if questions.failed_output:
+        print(f"{len(questions.failed_output)} questions had unexpected output. Fixed {len(questions.fixed_output)}.")
         return 1
     else:
         return 0
