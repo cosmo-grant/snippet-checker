@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "anki>=25.9.2",
     "docker>=7.1.0",
+    "tqdm>=4.67.1",
 ]
 
 [dependency-groups]

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import docker
 from anki.storage import Collection
+from tqdm import tqdm
 
 
 def canonicalize(output: str) -> str:
@@ -178,23 +179,19 @@ class AnkiQuestions:
         note.fields[1] = output
         self.collection.update_note(note)
         self.fixed_output.append(question)
-        print("Fixed")
+        print("\N{SPARKLES} Fixed.")
 
     def check_output(self, offer_fix: bool) -> None:
-        for question in self.questions:
-            print(f"Checking output of {question.id}...", end="", flush=True)
+        for question in tqdm(self.questions):
             diff = question.diff_output()
             if diff:
-                print("❌")
+                print(f"\N{CROSS MARK} unexpected output for {question.id}")
                 print(diff)
                 self.failed_output.append(question)
                 if offer_fix:
                     response = should_fix()
                     if response:
                         self.fix(question)
-
-            else:
-                print("✅")
 
 
 def main() -> int:
@@ -207,7 +204,9 @@ def main() -> int:
     questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
     questions.check_output(args.fix_output)
     if questions.failed_output:
-        print(f"{len(questions.failed_output)} questions had unexpected output. Fixed {len(questions.fixed_output)}.")
+        print(
+            f"{len(questions.failed_output)} questions had unexpected output ({len(questions.fixed_output)} fixed, {len(questions.failed_output) - len(questions.fixed_output)} remaining)."
+        )
         return 1
     else:
         return 0
