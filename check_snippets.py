@@ -160,6 +160,17 @@ class AnkiQuestions:
         """
         return output.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ")
 
+    def check_output(self) -> list[Question]:
+        failed = []
+        for question in self.questions:
+            print(f"Checking output of {question.id}...", end="", flush=True)
+            diff = question.diff_output()
+            if diff:
+                print("❌")
+                print(diff)
+                failed.append(question)
+            else:
+                print("✅")
 
 def main() -> int:
     argument_parser = ArgumentParser()
@@ -167,21 +178,10 @@ def main() -> int:
     argument_parser.add_argument("tag")
     args = argument_parser.parse_args()
 
-    anki_questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
-
-    failed_output = []
-    for question in anki_questions.questions:
-        print(f"Checking output of {question.id}...", end="", flush=True)
-        diff = question.diff_output()
-        if diff:
-            print("❌")
-            print(diff)
-            failed_output.append(question)
-        else:
-            print("✅")
-
-    if failed_output:
-        print(f"Unexpected output for {len(failed_output)} questions: {', '.join(str(qu.id) for qu in failed_output)}")
+    questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
+    failed = questions.check_output()
+    if failed:
+        print(f"Unexpected output for {len(failed)} questions")
         return 1
     else:
         return 0
