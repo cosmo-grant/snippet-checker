@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 
 def canonicalize(output: str) -> str:
+    # TODO: ""File "<string>", line 3 SyntaxError: no binding for nonlocal 'x' found"
     output = output.rstrip("\n")
     output = canonicalize_memory_addresses(output)
     output = canonicalize_traceback(output)
@@ -91,7 +92,7 @@ class Snippet:
             raw_output[delta] = line
         return Output(raw_output)
 
-    def format(self) -> str:
+    def format(self, compress: bool = False) -> str:
         called_process = subprocess.run(
             ["ruff", "format", "-"],
             check=True,
@@ -107,6 +108,19 @@ class Question:
         self.id = id
         self.snippet = Snippet(code)
         self.output = expected_output
+
+    def diff_formatting(self, compress: bool = False) -> str:
+        actual = self.snippet.code
+        formatted = self.snippet.format(compress)
+        if compress:
+            formatted = formatted.strip().replace("\n\n\n", "\n\n")
+        diff = difflib.unified_diff(
+            actual.splitlines(keepends=True),
+            formatted.splitlines(keepends=True),
+            fromfile="actual",
+            tofile="formatted",
+        )
+        return "".join(diff)
 
     def diff_output(self) -> str:
         """
@@ -128,7 +142,7 @@ class Question:
 
 
 def should_fix() -> bool:
-    response = input("Overwrite output (only 'y' will lead to overwrite)? ")
+    response = input("Enter 'y' to overwrite: ")
     return response == "y"
 
 
@@ -137,8 +151,8 @@ class AnkiQuestions:
         path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
         self.collection = Collection(str(path))
 
-        self.failed_output: list[Question] = []
-        self.fixed_output: list[Question] = []
+        self.failed: list[Question] = []
+        self.fixed: list[Question] = []
 
         print(f"Looking for notes with type '{note_type}' and tag '{tag}'.")
         note_ids = self.collection.find_notes("")
@@ -153,32 +167,59 @@ class AnkiQuestions:
         questions = []
         for note in self.notes:
             code, output, _, _ = note.fields
-            code = code.removeprefix('<pre><code class="lang-python">').removesuffix("</code></pre>")
-            output = self.clean(output)
+            code = self.pre_process(code)
+            code = self.html_to_plain(code)
+            output = self.html_to_plain(output)
             id = note.id
             questions.append(Question(str(id), code, output))
         self.questions = questions
 
-    def clean(self, output: str) -> str:
+    def html_to_plain(self, html: str) -> str:
         """
-        Replace html tags with text equivalents.
+        Replace html tags or entity names with text equivalents.
 
         Anki note fields are html.
         Code output notes' output field should have minimal markup.
-        Replace this markup with text equivalents, e.g. <br> -> newline.
+        Replace this markup with text equivalents, e.g. <br> -> \\n.
         """
-        return output.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ")
+        # quotation mark and apostrophe are html reserved characters
+        # but in my notes we use " and ' seemingly without issue, not &quot; or &apos;
+        # so we don't need to replace those
+        # also, some &nbsp; linger, so just clean them ad hoc here
+        # TODO: think about where these cleaning methods live
+        return html.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ").replace("&amp;", "&")
 
-    def fix(self, question: Question) -> None:
+    def plain_to_html(self, plain: str) -> str:
+        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+
+    def pre_process(self, code: str) -> str:
+        return code.removeprefix('<pre><code class="lang-python">').removesuffix("</code></pre>")
+
+    def post_process(self, code: str) -> str:
+        return f'<pre><code class="lang-python">{code}</code></pre>'
+
+    def fix_output(self, question: Question) -> None:
         "Write a canonicalized output of the given question's snippet to the anki database."
 
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
         output = note.fields[1]
         output = str(question.snippet.run())
+        output = self.plain_to_html(output)
         output = canonicalize_traceback(output)
         note.fields[1] = output
         self.collection.update_note(note)
-        self.fixed_output.append(question)
+        self.fixed.append(question)
+        print("\N{SPARKLES} Fixed.")
+
+    def fix_formatting(self, question: Question) -> None:
+        "Write a formatted version of the given question's snippet to the anki database."
+        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
+        formatted = question.snippet.format(compress=True)  # compressed looks better in anki notes
+        formatted = self.post_process(formatted)
+        formatted = self.plain_to_html(formatted)
+        note.fields[0] = formatted
+        self.collection.update_note(note)
+        self.fixed.append(question)
         print("\N{SPARKLES} Fixed.")
 
     def check_output(self, offer_fix: bool) -> None:
@@ -187,29 +228,75 @@ class AnkiQuestions:
             if diff:
                 print(f"\N{CROSS MARK} unexpected output for {question.id}")
                 print(diff)
-                self.failed_output.append(question)
+                self.failed.append(question)
                 if offer_fix:
                     response = should_fix()
                     if response:
-                        self.fix(question)
+                        self.fix_output(question)
+                    else:
+                        print("Leaving as is.")
+
+    def check_formatting(self, offer_fix: bool) -> None:
+        for question in tqdm(self.questions):
+            diff = question.diff_formatting(compress=True)
+            if diff:
+                print(f"\N{CROSS MARK} unexpected formatting for {question.id}")
+                print(diff)
+                self.failed.append(question)
+                if offer_fix:
+                    response = should_fix()
+                    if response:
+                        self.fix_formatting(question)
+                    else:
+                        print("Leaving as is.")
 
 
-def main() -> int:
-    argument_parser = ArgumentParser()
-    argument_parser.add_argument("note_type")
-    argument_parser.add_argument("tag")
-    argument_parser.add_argument("--fix-output", action="store_true")
-    args = argument_parser.parse_args()
-
+def check_output(args) -> int:
     questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
-    questions.check_output(args.fix_output)
-    if questions.failed_output:
+    questions.check_output(args.fix)
+    if questions.failed:
         print(
-            f"{len(questions.failed_output)} questions had unexpected output ({len(questions.fixed_output)} fixed, {len(questions.failed_output) - len(questions.fixed_output)} remaining)."
+            f"{len(questions.failed)} questions had unexpected output "
+            f"({len(questions.fixed)} fixed, {len(questions.failed) - len(questions.fixed)} remaining)."
         )
         return 1
     else:
+        print("All good.")
         return 0
+
+
+def check_formatting(args) -> int:
+    questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
+    questions.check_formatting(args.fix)
+    if questions.failed:
+        print(
+            f"{len(questions.failed)} questions had unexpected formatting "
+            f"({len(questions.fixed)} fixed, {len(questions.failed) - len(questions.fixed)} remaining)."
+        )
+        return 1
+    else:
+        print("All good.")
+        return 0
+
+
+def main() -> int:
+    parser = ArgumentParser()
+    parser.add_argument("note_type")
+    parser.add_argument("tag")
+    subparsers = parser.add_subparsers()
+
+    check_parser = subparsers.add_parser("check", help="check snippet output")
+    check_parser.add_argument("--fix", action="store_true")
+    check_parser.set_defaults(func=check_output)
+
+    format_parser = subparsers.add_parser("format", help="check snippet formatting")
+    format_parser.add_argument("--fix", action="store_true")
+    format_parser.set_defaults(func=check_formatting)
+
+    args = parser.parse_args()
+
+    exit_code = args.func(args)
+    return exit_code
 
 
 if __name__ == "__main__":
