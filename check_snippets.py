@@ -13,10 +13,10 @@ from tqdm import tqdm
 
 
 def canonicalize(output: str) -> str:
-    # TODO: ""File "<string>", line 3 SyntaxError: no binding for nonlocal 'x' found"
     output = output.rstrip("\n")
     output = canonicalize_memory_addresses(output)
     output = canonicalize_traceback(output)
+    output = canonicalize_location_info(output)
     return output
 
 
@@ -42,6 +42,12 @@ def canonicalize_traceback(output: str) -> str:
     # a traceback's last line doesn't start with whitespace so won't be captured
     canonicalized = re.sub(traceback_except_for_last_line, "", output)
 
+    return canonicalized
+
+
+def canonicalize_location_info(output: str) -> str:
+    location_info = re.compile(r'  File "<string>", line.*\n')
+    canonicalized = re.sub(location_info, "", output)
     return canonicalized
 
 
