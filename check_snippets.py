@@ -12,70 +12,74 @@ from anki.storage import Collection
 from tqdm import tqdm
 
 
-def canonicalize(output: str) -> str:
-    output = output.rstrip("\n")
-    output = canonicalize_memory_addresses(output)
-    output = canonicalize_traceback(output)
-    output = canonicalize_location_info(output)
-    return output
-
-
-def canonicalize_memory_addresses(output: str) -> str:
-    memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
-    seen = set()
-    canonicalized = output
-    for match in re.finditer(memory_address, output):
-        address = match.group()
-        if address in seen:
-            continue
-        seen.add(address)
-        canonicalized = canonicalized.replace(address, f"0x{len(seen)}")
-
-    return canonicalized
-
-
-def canonicalize_traceback(output: str) -> str:
-    traceback_except_for_last_line = re.compile(
-        r"Traceback \(most\ recent\ call\ last\):\n"  # start of traceback
-        r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
-    )
-    # a traceback's last line doesn't start with whitespace so won't be captured
-    canonicalized = re.sub(traceback_except_for_last_line, "", output)
-
-    return canonicalized
-
-
-def canonicalize_location_info(output: str) -> str:
-    location_info = re.compile(r'  File "<string>", line.*\n')
-    canonicalized = re.sub(location_info, "", output)
-    return canonicalized
-
-
 class Output:
-    def __init__(self, raw_output: dict[float, bytes]):
-        self.raw_output = raw_output
+    "A representation of a snippet's output."
 
-        output: dict[int, str] = {}
+    def __init__(self, output: str) -> None:
+        self.raw = output
+        self.canonicalized = self.canonicalize(output)
+
+    @classmethod
+    def from_logs(cls, logs: dict[float, bytes]) -> "Output":
+        "Alternative constructor, creating an output from timed docker logs."
+
+        rounded_logs: dict[int, str] = {}
         # insertion order should be ascending t, but let's be clear and cautious
-        for t in sorted(raw_output):
+        for t in sorted(logs):
             rounded_t = round(t)
-            line = raw_output[t].decode("utf-8")
-            output[rounded_t] = output.get(rounded_t, "") + line
-        self.output = output
+            line = logs[t].decode("utf-8")
+            rounded_logs[rounded_t] = rounded_logs.get(rounded_t, "") + line
 
-    def __str__(self) -> str:
-        result = ""
+        output = ""
         previous = 0
-        for t, line in self.output.items():
+        for t, line in rounded_logs.items():
             delta = t - previous
-            result += f"<~{delta}s>\n"
-            result += line
+            output += f"<~{delta}s>\n"
+            output += line
             previous = t
-        result = result.removeprefix("<~0s>\n")
-        return result
+        output = output.removeprefix("<~0s>\n")
+
+        return Output(output)
+
+    def canonicalize(self, output: str) -> str:
+        output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
+        output = self.canonicalize_memory_addresses(output)
+        output = self.canonicalize_traceback(output)
+        output = self.canonicalize_location_info(output)
+        return output
+
+    def canonicalize_memory_addresses(self, output: str) -> str:
+        memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
+        seen = set()
+        canonicalized = output
+        for match in re.finditer(memory_address, output):
+            address = match.group()
+            if address in seen:
+                continue
+            seen.add(address)
+            canonicalized = canonicalized.replace(address, f"0x{len(seen)}")
+
+        return canonicalized
+
+    def canonicalize_traceback(self, output: str) -> str:
+        traceback_except_for_last_line = re.compile(
+            r"Traceback \(most\ recent\ call\ last\):\n"  # start of traceback
+            r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
+        )
+        # a traceback's last line doesn't start with whitespace so won't be captured
+        canonicalized = re.sub(traceback_except_for_last_line, "", output)
+
+        return canonicalized
+
+    def canonicalize_location_info(self, output: str) -> str:
+        location_info = re.compile(r'  File "<string>", line.*\n')
+        canonicalized = re.sub(location_info, "", output)
+        return canonicalized
 
 
 class Snippet:
+    "A python code snippet."
+
     def __init__(self, code: str, python_version: str = "3.13"):
         os.environ["DOCKER_HOST"] = f"unix://{Path.home()}/.docker/run/docker.sock"
         self.client = docker.from_env()
@@ -90,13 +94,14 @@ class Snippet:
             auto_remove=True,
         )
 
-        raw_output = {}
+        logs = {}
         start = time.perf_counter()
         for line in container.logs(stream=True):  # blocks until \n
             now = time.perf_counter()
             delta = now - start
-            raw_output[delta] = line
-        return Output(raw_output)
+            logs[delta] = line
+
+        return Output.from_logs(logs)
 
     def format(self, compress: bool = False) -> str:
         called_process = subprocess.run(
@@ -113,7 +118,7 @@ class Question:
     def __init__(self, id: str, code: str, expected_output: str):
         self.id = id
         self.snippet = Snippet(code)
-        self.output = expected_output
+        self.output = Output(expected_output)
 
     def diff_formatting(self, compress: bool = False) -> str:
         actual = self.snippet.code
@@ -135,12 +140,10 @@ class Question:
         The returned string should be empty if the canonicalized outputs are equal.
         Not all diff formats do this!
         """
-        actual_output = str(self.snippet.run())
-        canonicalized_actual_output = canonicalize(actual_output)
-        canonicalized_expected_output = canonicalize(self.output)
+        actual_output = self.snippet.run()
         diff = difflib.unified_diff(
-            canonicalized_actual_output.splitlines(keepends=True),
-            canonicalized_expected_output.splitlines(keepends=True),
+            actual_output.canonicalized.splitlines(keepends=True),
+            self.output.canonicalized.splitlines(keepends=True),
             fromfile="actual (canonicalized)",
             tofile="expected (canonicalized)",
         )
@@ -205,14 +208,12 @@ class AnkiQuestions:
         return f'<pre><code class="lang-python">{code}</code></pre>'
 
     def fix_output(self, question: Question) -> None:
-        "Write a canonicalized output of the given question's snippet to the anki database."
+        "Write the canonicalized, marked up output of the given question's snippet to the anki database."
 
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        output = note.fields[1]
-        output = str(question.snippet.run())
-        output = self.plain_to_html(output)
-        output = canonicalize_traceback(output)
-        note.fields[1] = output
+        output = question.snippet.run()
+        note_output = self.plain_to_html(output.canonicalized)
+        note.fields[1] = note_output
         self.collection.update_note(note)
         self.fixed.append(question)
         print("\N{SPARKLES} Fixed.")
