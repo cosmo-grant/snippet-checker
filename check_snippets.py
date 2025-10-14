@@ -111,8 +111,11 @@ class Snippet:
             stdout=subprocess.PIPE,
             text=True,
         )
-        return called_process.stdout
+        formatted = called_process.stdout
+        if compress:
+            formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
+        return formatted
 
 class Question:
     def __init__(self, id: str, code: str, expected_output: str):
@@ -123,8 +126,6 @@ class Question:
     def diff_formatting(self, compress: bool = False) -> str:
         actual = self.snippet.code
         formatted = self.snippet.format(compress)
-        if compress:
-            formatted = formatted.strip().replace("\n\n\n", "\n\n")
         diff = difflib.unified_diff(
             actual.splitlines(keepends=True),
             formatted.splitlines(keepends=True),
