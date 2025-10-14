@@ -174,8 +174,8 @@ class AnkiQuestions:
         # TODO: think about where these cleaning methods live
         return html.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ").replace("&amp;", "&")
 
-    def plain_to_html(self, plain: str) -> str:
-        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+    def escape_html(self, plain: str) -> str:
+        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def pre_process(self, code: str) -> str:
         return code.removeprefix('<pre><code class="lang-python">').removesuffix("</code></pre>")
@@ -188,7 +188,7 @@ class AnkiQuestions:
 
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
         output = question.snippet.run()
-        note_output = self.plain_to_html(output.normalised)
+        note_output = self.escape_html(output.normalised)
         note.fields[1] = note_output
         self.collection.update_note(note)
         self.fixed.append(question)
