@@ -14,6 +14,13 @@ from tqdm import tqdm
 class Output:
     "A representation of a snippet's output."
 
+    memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
+    traceback_except_for_last_line = re.compile(
+        r"Traceback \(most\ recent\ call\ last\):\n"  # start of traceback
+        r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
+    )  # a traceback's last line doesn't start with whitespace so won't be captured
+    location_info = re.compile(r'  File "<string>", line.*\n')
+
     def __init__(self, output: str) -> None:
         self.raw = output
         self.normalised = self.normalise(output)
@@ -48,10 +55,9 @@ class Output:
         return output
 
     def normalise_memory_addresses(self, output: str) -> str:
-        memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
         seen = set()
         normalised = output
-        for match in re.finditer(memory_address, output):
+        for match in re.finditer(self.memory_address, output):
             address = match.group()
             if address in seen:
                 continue
@@ -61,18 +67,12 @@ class Output:
         return normalised
 
     def normalise_traceback(self, output: str) -> str:
-        traceback_except_for_last_line = re.compile(
-            r"Traceback \(most\ recent\ call\ last\):\n"  # start of traceback
-            r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
-        )
-        # a traceback's last line doesn't start with whitespace so won't be captured
-        normalised = re.sub(traceback_except_for_last_line, "", output)
+        normalised = re.sub(self.traceback_except_for_last_line, "", output)
 
         return normalised
 
     def normalise_location_info(self, output: str) -> str:
-        location_info = re.compile(r'  File "<string>", line.*\n')
-        normalised = re.sub(location_info, "", output)
+        normalised = re.sub(self.location_info, "", output)
         return normalised
 
 
