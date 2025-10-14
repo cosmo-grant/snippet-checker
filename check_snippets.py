@@ -17,7 +17,7 @@ class Output:
 
     def __init__(self, output: str) -> None:
         self.raw = output
-        self.canonicalized = self.canonicalize(output)
+        self.normalised = self.normalise(output)
 
     @classmethod
     def from_logs(cls, logs: dict[float, bytes]) -> "Output":
@@ -41,40 +41,40 @@ class Output:
 
         return Output(output)
 
-    def canonicalize(self, output: str) -> str:
+    def normalise(self, output: str) -> str:
         output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
-        output = self.canonicalize_memory_addresses(output)
-        output = self.canonicalize_traceback(output)
-        output = self.canonicalize_location_info(output)
+        output = self.normalise_memory_addresses(output)
+        output = self.normalise_traceback(output)
+        output = self.normalise_location_info(output)
         return output
 
-    def canonicalize_memory_addresses(self, output: str) -> str:
+    def normalise_memory_addresses(self, output: str) -> str:
         memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
         seen = set()
-        canonicalized = output
+        normalised = output
         for match in re.finditer(memory_address, output):
             address = match.group()
             if address in seen:
                 continue
             seen.add(address)
-            canonicalized = canonicalized.replace(address, f"0x{len(seen)}")
+            normalised = normalised.replace(address, f"0x{len(seen)}")
 
-        return canonicalized
+        return normalised
 
-    def canonicalize_traceback(self, output: str) -> str:
+    def normalise_traceback(self, output: str) -> str:
         traceback_except_for_last_line = re.compile(
             r"Traceback \(most\ recent\ call\ last\):\n"  # start of traceback
             r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
         )
         # a traceback's last line doesn't start with whitespace so won't be captured
-        canonicalized = re.sub(traceback_except_for_last_line, "", output)
+        normalised = re.sub(traceback_except_for_last_line, "", output)
 
-        return canonicalized
+        return normalised
 
-    def canonicalize_location_info(self, output: str) -> str:
+    def normalise_location_info(self, output: str) -> str:
         location_info = re.compile(r'  File "<string>", line.*\n')
-        canonicalized = re.sub(location_info, "", output)
-        return canonicalized
+        normalised = re.sub(location_info, "", output)
+        return normalised
 
 
 class Snippet:
@@ -135,17 +135,17 @@ class Question:
 
     def diff_output(self) -> str:
         """
-        Return the diff of canonicalized actual and expected output.
+        Return the diff of normalised actual and expected output.
 
-        The returned string should be empty if the canonicalized outputs are equal.
+        The returned string should be empty if the normalised outputs are equal.
         Not all diff formats do this!
         """
         actual_output = self.snippet.run()
         diff = difflib.unified_diff(
-            actual_output.canonicalized.splitlines(keepends=True),
-            self.output.canonicalized.splitlines(keepends=True),
-            fromfile="actual (canonicalized)",
-            tofile="expected (canonicalized)",
+            actual_output.normalised.splitlines(keepends=True),
+            self.output.normalised.splitlines(keepends=True),
+            fromfile="actual (normalised)",
+            tofile="expected (normalised)",
         )
         return "".join(diff)
 
@@ -204,11 +204,11 @@ class AnkiQuestions:
         return f'<pre><code class="lang-python">{code}</code></pre>'
 
     def fix_output(self, question: Question) -> None:
-        "Write the canonicalized, marked up output of the given question's snippet to the anki database."
+        "Write the normalised, marked up output of the given question's snippet to the anki database."
 
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
         output = question.snippet.run()
-        note_output = self.plain_to_html(output.canonicalized)
+        note_output = self.plain_to_html(output.normalised)
         note.fields[1] = note_output
         self.collection.update_note(note)
         self.fixed.append(question)
