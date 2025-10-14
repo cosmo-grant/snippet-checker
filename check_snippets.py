@@ -1,4 +1,3 @@
-import difflib
 import os
 import re
 import subprocess
@@ -103,7 +102,7 @@ class Snippet:
 
         return Output.from_logs(logs)
 
-    def format(self, compress: bool = False) -> str:
+    def format(self, compressed: bool = False) -> str:
         called_process = subprocess.run(
             ["ruff", "format", "-"],
             check=True,
@@ -112,10 +111,11 @@ class Snippet:
             text=True,
         )
         formatted = called_process.stdout
-        if compress:
+        if compressed:
             formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
         return formatted
+
 
 class Question:
     def __init__(self, id: str, code: str, expected_output: str):
@@ -123,32 +123,11 @@ class Question:
         self.snippet = Snippet(code)
         self.output = Output(expected_output)
 
-    def diff_formatting(self, compress: bool = False) -> str:
-        actual = self.snippet.code
-        formatted = self.snippet.format(compress)
-        diff = difflib.unified_diff(
-            actual.splitlines(keepends=True),
-            formatted.splitlines(keepends=True),
-            fromfile="actual",
-            tofile="formatted",
-        )
-        return "".join(diff)
+    def is_formatted(self, compressed: bool = False) -> bool:
+        return self.snippet.code == self.snippet.format(compressed)
 
-    def diff_output(self) -> str:
-        """
-        Return the diff of normalised actual and expected output.
-
-        The returned string should be empty if the normalised outputs are equal.
-        Not all diff formats do this!
-        """
-        actual_output = self.snippet.run()
-        diff = difflib.unified_diff(
-            actual_output.normalised.splitlines(keepends=True),
-            self.output.normalised.splitlines(keepends=True),
-            fromfile="actual (normalised)",
-            tofile="expected (normalised)",
-        )
-        return "".join(diff)
+    def has_ok_output(self) -> bool:
+        return self.snippet.run().normalised == self.output.normalised
 
 
 def should_fix() -> bool:
@@ -218,7 +197,7 @@ class AnkiQuestions:
     def fix_formatting(self, question: Question) -> None:
         "Write a formatted version of the given question's snippet to the anki database."
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        formatted = question.snippet.format(compress=True)  # compressed looks better in anki notes
+        formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
         formatted = self.post_process(formatted)
         formatted = self.plain_to_html(formatted)
         note.fields[0] = formatted
@@ -228,10 +207,12 @@ class AnkiQuestions:
 
     def check_output(self, offer_fix: bool) -> None:
         for question in tqdm(self.questions):
-            diff = question.diff_output()
-            if diff:
+            if not question.has_ok_output():
                 print(f"\N{CROSS MARK} unexpected output for {question.id}")
-                print(diff)
+                print("Output (normalised):")
+                print(question.snippet.run().normalised)
+                print("Given (normalised):")
+                print(question.output.normalised)
                 self.failed.append(question)
                 if offer_fix:
                     response = should_fix()
@@ -242,10 +223,12 @@ class AnkiQuestions:
 
     def check_formatting(self, offer_fix: bool) -> None:
         for question in tqdm(self.questions):
-            diff = question.diff_formatting(compress=True)
-            if diff:
+            if not question.is_formatted(compressed=True):
                 print(f"\N{CROSS MARK} unexpected formatting for {question.id}")
-                print(diff)
+                print("Formatted:")
+                print(question.snippet.format(compressed=True))
+                print("Given:")
+                print(question.snippet.code)
                 self.failed.append(question)
                 if offer_fix:
                     response = should_fix()
