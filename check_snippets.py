@@ -198,8 +198,8 @@ class AnkiQuestions:
         "Write a formatted version of the given question's snippet to the anki database."
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
         formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
-        formatted = self.post_process(formatted)
         formatted = self.plain_to_html(formatted)
+        formatted = self.post_process(formatted)
         note.fields[0] = formatted
         self.collection.update_note(note)
         self.fixed.append(question)
