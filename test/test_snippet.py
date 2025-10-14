@@ -3,11 +3,7 @@ from textwrap import dedent
 
 from pytest import mark
 
-from check_snippets import (
-    Snippet,
-    canonicalize_memory_addresses,
-    canonicalize_traceback,
-)
+from check_snippets import Output, Snippet
 
 
 def get_snippets(dir):
@@ -28,7 +24,7 @@ def get_snippets(dir):
 def test_ok_snippet(source_code, expected_output):
     snippet = Snippet(source_code)
     actual_output = snippet.run()
-    assert expected_output == str(actual_output)
+    assert expected_output == actual_output.raw
 
 
 @mark.xfail
@@ -36,7 +32,7 @@ def test_ok_snippet(source_code, expected_output):
 def test_limitations_snippet(source_code, expected_output):
     snippet = Snippet(source_code)
     actual_output = snippet.run()
-    assert expected_output == str(actual_output)
+    assert expected_output == actual_output.raw
 
 
 def test_format_no_change():
@@ -52,32 +48,34 @@ def test_format_change():
 
 
 def test_canonicalize_memory_address():
-    output = dedent("""
+    output = Output(
+        dedent("""
         <__main__.C object at 0x104cfa450>
         <__main__.D object at 0x104cfa5d0>
         <__main__.C object at 0x104cfa450>
-        """)
-    actual_canonicalized = canonicalize_memory_addresses(output)
+        """).strip()
+    )
     expected_canonicalized = dedent("""
         <__main__.C object at 0x1>
         <__main__.D object at 0x2>
         <__main__.C object at 0x1>
-    """)
+        """).strip()
 
-    assert expected_canonicalized == actual_canonicalized
+    assert expected_canonicalized == output.canonicalized
 
 
 def test_canonicalize_traceback():
-    output = dedent("""
+    output = Output(
+        dedent("""
         Traceback (most recent call last):
           File "<string>", line 1, in <module>
             1 / 0
             ~~^~~
         ZeroDivisionError: division by zero
         """).strip()
-    actual_canonicalized = canonicalize_traceback(output)
+    )
     expected_canonicalized = dedent("""
         ZeroDivisionError: division by zero
         """).strip()
 
-    assert actual_canonicalized == expected_canonicalized
+    assert output.canonicalized == expected_canonicalized
