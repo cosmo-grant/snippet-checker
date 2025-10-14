@@ -156,21 +156,17 @@ def should_fix() -> bool:
 
 
 class AnkiQuestions:
-    def __init__(self, note_type: str, tag: str):
+    def __init__(self, tag: str):
         path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
         self.collection = Collection(str(path))
 
         self.failed: list[Question] = []
         self.fixed: list[Question] = []
 
-        print(f"Looking for notes with type '{note_type}' and tag '{tag}'.")
+        print(f"Looking for notes tagged '{tag}'.")
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
-        self.notes = [
-            note
-            for note in notes
-            if tag in note.tags and note.note_type()["name"] == note_type  # type: ignore[index]
-        ]
+        self.notes = [note for note in notes if tag in note.tags]
         print(f"Found {len(self.notes)} notes")
 
         questions = []
@@ -259,7 +255,7 @@ class AnkiQuestions:
 
 
 def check_output(args) -> int:
-    questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
+    questions = AnkiQuestions(tag=args.tag)
     questions.check_output(args.fix)
     if questions.failed:
         print(
@@ -273,7 +269,7 @@ def check_output(args) -> int:
 
 
 def check_formatting(args) -> int:
-    questions = AnkiQuestions(note_type=args.note_type, tag=args.tag)
+    questions = AnkiQuestions(tag=args.tag)
     questions.check_formatting(args.fix)
     if questions.failed:
         print(
@@ -288,7 +284,6 @@ def check_formatting(args) -> int:
 
 def main() -> int:
     parser = ArgumentParser()
-    parser.add_argument("note_type")
     parser.add_argument("tag")
     subparsers = parser.add_subparsers()
 
