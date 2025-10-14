@@ -47,7 +47,7 @@ def test_format_change():
     assert snippet.format() == 'print("hello")\n'
 
 
-def test_canonicalize_memory_address():
+def test_normalise_memory_address():
     output = Output(
         dedent("""
         <__main__.C object at 0x104cfa450>
@@ -55,16 +55,16 @@ def test_canonicalize_memory_address():
         <__main__.C object at 0x104cfa450>
         """).strip()
     )
-    expected_canonicalized = dedent("""
+    expected_normalised = dedent("""
         <__main__.C object at 0x1>
         <__main__.D object at 0x2>
         <__main__.C object at 0x1>
         """).strip()
 
-    assert expected_canonicalized == output.canonicalized
+    assert expected_normalised == output.normalised
 
 
-def test_canonicalize_traceback():
+def test_normalise_traceback():
     output = Output(
         dedent("""
         Traceback (most recent call last):
@@ -74,8 +74,8 @@ def test_canonicalize_traceback():
         ZeroDivisionError: division by zero
         """).strip()
     )
-    expected_canonicalized = dedent("""
+    expected_normalised = dedent("""
         ZeroDivisionError: division by zero
         """).strip()
 
-    assert output.canonicalized == expected_canonicalized
+    assert output.normalised == expected_normalised
