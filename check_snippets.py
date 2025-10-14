@@ -4,6 +4,7 @@ import subprocess
 import sys
 import time
 from argparse import ArgumentParser
+from functools import cached_property
 from pathlib import Path
 
 import docker
@@ -85,7 +86,8 @@ class Snippet:
         self.code = code
         self.python_version = python_version
 
-    def run(self) -> Output:
+    @cached_property
+    def output(self) -> Output:
         container = self.client.containers.run(
             f"python:{self.python_version}",
             command=["python", "-u", "-c", self.code],
@@ -127,7 +129,7 @@ class Question:
         return self.snippet.code == self.snippet.format(compressed)
 
     def has_ok_output(self) -> bool:
-        return self.snippet.run().normalised == self.output.normalised
+        return self.snippet.output.normalised == self.output.normalised
 
 
 def should_fix() -> bool:
@@ -187,7 +189,7 @@ class AnkiQuestions:
         "Write the normalised, marked up output of the given question's snippet to the anki database."
 
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        output = question.snippet.run()
+        output = question.snippet.output
         note_output = self.escape_html(output.normalised)
         note.fields[1] = note_output
         self.collection.update_note(note)
@@ -198,7 +200,7 @@ class AnkiQuestions:
         "Write a formatted version of the given question's snippet to the anki database."
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
         formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
-        formatted = self.plain_to_html(formatted)
+        formatted = self.escape_html(formatted)
         formatted = self.post_process(formatted)
         note.fields[0] = formatted
         self.collection.update_note(note)
@@ -210,7 +212,7 @@ class AnkiQuestions:
             if not question.has_ok_output():
                 print(f"\N{CROSS MARK} unexpected output for {question.id}")
                 print("Output (normalised):")
-                print(question.snippet.run().normalised)
+                print(question.snippet.output.normalised)
                 print("Given (normalised):")
                 print(question.output.normalised)
                 self.failed.append(question)
