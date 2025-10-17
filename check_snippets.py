@@ -204,15 +204,16 @@ class AnkiQuestions:
         self.fixed.append(question)
 
     def check_output(self, offer_fix: bool) -> None:
+        print("----------")
         for question in self.questions:
             if not question.has_ok_output():
-                print(f"\N{CROSS MARK} unexpected output for {question.id}")
+                print(f"\N{CROSS MARK} unexpected output for {question.id}", end="\n\n")
                 print("Code:")
-                colour_print(question.snippet.code, colour="cyan")
+                colour_print(question.snippet.code, colour="cyan", end="\n\n")
                 print("Output (normalised):")
-                colour_print(question.snippet.output.normalised, colour="green")
+                colour_print(question.snippet.output.normalised, colour="green", end="\n\n")
                 print("Given (normalised):")
-                colour_print(question.output.normalised, colour="red")
+                colour_print(question.output.normalised, colour="red", end="\n\n")
                 self.failed.append(question)
                 if offer_fix:
                     response = should_fix()
@@ -220,23 +221,26 @@ class AnkiQuestions:
                         self.fix_output(question)
                         print("\N{SPARKLES} Fixed.", end="\n\n")
                     else:
-                        print("Leaving as is.")
+                        print("Leaving as is.", end="\n\n")
+                print("----------", end="\n\n")
 
     def check_formatting(self, offer_fix: bool) -> None:
+        print("----------")
         for question in self.questions:
             formatted = question.snippet.format(compressed=True)
             if formatted is None:
                 # error when trying to format snippet
-                print(f"\N{CROSS MARK} error when formatting {question.id}")
+                print(f"\N{CROSS MARK} error when formatting {question.id}", end="\n\n")
                 print("Given:")
-                colour_print(question.snippet.code, colour="red")
+                colour_print(question.snippet.code, colour="red", end="\n\n")
                 self.failed.append(question)
+                print("----------", end="\n\n")
             elif formatted != question.snippet.code:
-                print(f"\N{CROSS MARK} unexpected formatting for {question.id}")
+                print(f"\N{CROSS MARK} unexpected formatting for {question.id}", end="\n\n")
                 print("Formatted:")
-                colour_print(question.snippet.format(compressed=True), colour="green")
+                colour_print(question.snippet.format(compressed=True), colour="green", end="\n\n")
                 print("Given:")
-                colour_print(question.snippet.code, colour="red")
+                colour_print(question.snippet.code, colour="red", end="\n\n")
                 self.failed.append(question)
                 if offer_fix:
                     response = should_fix()
@@ -244,7 +248,8 @@ class AnkiQuestions:
                         self.fix_formatting(question)
                         print("\N{SPARKLES} Fixed.", end="\n\n")
                     else:
-                        print("Leaving as is.")
+                        print("Leaving as is.", end="\n\n")
+                print("----------", end="\n\n")
 
 
 def check_output(args) -> int:
