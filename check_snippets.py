@@ -197,6 +197,7 @@ class AnkiQuestions:
         "Write a formatted version of the given question's snippet to the anki database."
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
         formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
+        assert formatted is not None  # we only fix if no error when formatting
         formatted = self.escape_html(formatted)
         formatted = self.post_process(formatted)
         note.fields[0] = formatted
@@ -238,7 +239,7 @@ class AnkiQuestions:
             elif formatted != question.snippet.code:
                 print(f"\N{CROSS MARK} unexpected formatting for {question.id}", end="\n\n")
                 print("Formatted:")
-                colour_print(question.snippet.format(compressed=True), colour="green", end="\n\n")
+                colour_print(formatted, colour="green", end="\n\n")
                 print("Given:")
                 colour_print(question.snippet.code, colour="red", end="\n\n")
                 self.failed.append(question)
