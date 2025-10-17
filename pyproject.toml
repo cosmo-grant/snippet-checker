@@ -7,7 +7,6 @@ requires-python = ">=3.13"
 dependencies = [
     "anki>=25.9.2",
     "docker>=7.1.0",
-    "tqdm>=4.67.1",
 ]
 
 [dependency-groups]
@@ -17,7 +16,6 @@ dev = [
     "pytest>=8.4.2",
     "ruff>=0.14.0",
     "types-docker>=7.1.0.20251009",
-    "types-tqdm>=4.67.0.20250809",
 ]
 
 [tool.pytest.ini_options]

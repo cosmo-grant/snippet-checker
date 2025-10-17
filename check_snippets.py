@@ -9,7 +9,6 @@ from pathlib import Path
 
 import docker
 from anki.storage import Collection
-from tqdm import tqdm
 
 
 class Output:
@@ -208,7 +207,7 @@ class AnkiQuestions:
         print("\N{SPARKLES} Fixed.")
 
     def check_output(self, offer_fix: bool) -> None:
-        for question in tqdm(self.questions):
+        for question in self.questions:
             if not question.has_ok_output():
                 print(f"\N{CROSS MARK} unexpected output for {question.id}")
                 print("Output (normalised):")
@@ -224,7 +223,7 @@ class AnkiQuestions:
                         print("Leaving as is.")
 
     def check_formatting(self, offer_fix: bool) -> None:
-        for question in tqdm(self.questions):
+        for question in self.questions:
             if not question.is_formatted(compressed=True):
                 print(f"\N{CROSS MARK} unexpected formatting for {question.id}")
                 print("Formatted:")
