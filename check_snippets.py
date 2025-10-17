@@ -210,10 +210,12 @@ class AnkiQuestions:
         for question in self.questions:
             if not question.has_ok_output():
                 print(f"\N{CROSS MARK} unexpected output for {question.id}")
+                print("Code:")
+                colour_print(question.snippet.code, colour="cyan")
                 print("Output (normalised):")
-                print(question.snippet.output.normalised)
+                colour_print(question.snippet.output.normalised, colour="green")
                 print("Given (normalised):")
-                print(question.output.normalised)
+                colour_print(question.output.normalised, colour="red")
                 self.failed.append(question)
                 if offer_fix:
                     response = should_fix()
@@ -227,9 +229,9 @@ class AnkiQuestions:
             if not question.is_formatted(compressed=True):
                 print(f"\N{CROSS MARK} unexpected formatting for {question.id}")
                 print("Formatted:")
-                print(question.snippet.format(compressed=True))
+                colour_print(question.snippet.format(compressed=True), colour="green")
                 print("Given:")
-                print(question.snippet.code)
+                colour_print(question.snippet.code, colour="red")
                 self.failed.append(question)
                 if offer_fix:
                     response = should_fix()
@@ -265,6 +267,17 @@ def check_formatting(args) -> int:
     else:
         print("All good.")
         return 0
+
+
+def colour_print(string: str, colour: str, **kwargs) -> None:
+    if colour == "green":
+        print("\033[92m" + string + "\033[0m", **kwargs)
+    elif colour == "red":
+        print("\033[91m" + string + "\033[0m", **kwargs)
+    elif colour == "cyan":
+        print("\033[96m" + string + "\033[0m", **kwargs)
+    else:
+        raise ValueError(f"unsupported colour: {colour}")
 
 
 def main() -> int:
