@@ -192,7 +192,6 @@ class AnkiQuestions:
         note.fields[1] = note_output
         self.collection.update_note(note)
         self.fixed.append(question)
-        print("\N{SPARKLES} Fixed.")
 
     def fix_formatting(self, question: Question) -> None:
         "Write a formatted version of the given question's snippet to the anki database."
@@ -203,7 +202,6 @@ class AnkiQuestions:
         note.fields[0] = formatted
         self.collection.update_note(note)
         self.fixed.append(question)
-        print("\N{SPARKLES} Fixed.")
 
     def check_output(self, offer_fix: bool) -> None:
         for question in self.questions:
@@ -220,6 +218,7 @@ class AnkiQuestions:
                     response = should_fix()
                     if response:
                         self.fix_output(question)
+                        print("\N{SPARKLES} Fixed.", end="\n\n")
                     else:
                         print("Leaving as is.")
 
@@ -243,6 +242,7 @@ class AnkiQuestions:
                     response = should_fix()
                     if response:
                         self.fix_formatting(question)
+                        print("\N{SPARKLES} Fixed.", end="\n\n")
                     else:
                         print("Leaving as is.")
 
