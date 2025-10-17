@@ -141,14 +141,14 @@ class Question:
         return self.snippet.output.normalised == self.output.normalised
 
 
-def get_user_input() -> Literal["REPLACE", "IGNORE", "CONTINUE"]:
-    response = input("Enter 'r' to replace, 'i' to permanently ignore, anything else to continue: ")
+def get_user_input() -> Literal["REPLACE", "IGNORE", "LEAVE"]:
+    response = input("Enter 'r' to replace, 'i' to permanently ignore, anything else to leave as is: ")
     if response == "r":
         return "REPLACE"
     elif response == "i":
         return "IGNORE"
     else:
-        return "CONTINUE"
+        return "LEAVE"
 
 
 class AnkiQuestions:
@@ -249,7 +249,7 @@ class AnkiQuestions:
 
         for question in questions_to_check:
             if not question.has_ok_output():
-                print(f"\N{CROSS MARK} unexpected output for {question.id}", end="\n\n")
+                print(f"\N{CROSS MARK} Unexpected output for {question.id}.", end="\n\n")
                 print("Code:")
                 colour_print(question.snippet.code, colour="cyan", end="\n\n")
                 print("Output (normalised):")
@@ -261,7 +261,7 @@ class AnkiQuestions:
                     response = get_user_input()
                     if response == "REPLACE":
                         self.fix_output(question)
-                        print("\N{SPARKLES} Fixed.", end="\n\n")
+                        print("\N{SPARKLES} Replaced.", end="\n\n")
                     elif response == "IGNORE":
                         self.no_check_output(question)
                         print("\N{SEE-NO-EVIL MONKEY} Permanently ignored.", end="\n\n")
@@ -278,13 +278,13 @@ class AnkiQuestions:
             if formatted is None:
                 # error when trying to format snippet
                 # treat as non-fixable failure
-                print(f"\N{CROSS MARK} error when formatting {question.id}", end="\n\n")
+                print(f"\N{CROSS MARK} Error when formatting {question.id}.", end="\n\n")
                 print("Given:")
                 colour_print(question.snippet.code, colour="red", end="\n\n")
                 self.failed.append(question)
                 print("----------", end="\n\n")
             elif formatted != question.snippet.code:
-                print(f"\N{CROSS MARK} unexpected formatting for {question.id}", end="\n\n")
+                print(f"\N{CROSS MARK} Unexpected formatting for {question.id}.", end="\n\n")
                 print("Formatted:")
                 colour_print(formatted, colour="green", end="\n\n")
                 print("Given:")
@@ -294,10 +294,10 @@ class AnkiQuestions:
                     response = get_user_input()
                     if response == "REPLACE":
                         self.fix_formatting(question)
-                        print("\N{SPARKLES} Fixed.", end="\n\n")
+                        print("\N{SPARKLES} Replaced.", end="\n\n")
                     elif response == "IGNORE":
                         self.no_check_formatting(question)
-                        print("\N{SEE-NO-EVIL MONKEY} Ignored.", end="\n\n")
+                        print("\N{SEE-NO-EVIL MONKEY} Permanently ignored.", end="\n\n")
                     else:
                         print("\N{FACE WITHOUT MOUTH} Leaving as is.", end="\n\n")
                 print("----------", end="\n\n")
@@ -355,13 +355,17 @@ def main() -> int:
     parser.add_argument("tag")
     subparsers = parser.add_subparsers()
 
-    check_parser = subparsers.add_parser("check", help="check snippet output")
-    check_parser.add_argument("--interactive", action="store_true", help="get user input for whether to fix, ignore, or continue")
-    check_parser.set_defaults(func=check_output)
+    check_output_parser = subparsers.add_parser("check-output", help="check snippet output")
+    check_output_parser.add_argument(
+        "-i", "--interactive", action="store_true", help="get user input for whether to fix, ignore, or continue"
+    )
+    check_output_parser.set_defaults(func=check_output)
 
-    format_parser = subparsers.add_parser("format", help="check snippet formatting")
-    format_parser.add_argument("--interactive", action="store_true")
-    format_parser.set_defaults(func=check_formatting)
+    check_formatting_parser = subparsers.add_parser("check-formatting", help="check snippet formatting")
+    check_formatting_parser.add_argument(
+        "--interactive", action="store_true", help="get user input for whether to fix, ignore, or continue"
+    )
+    check_formatting_parser.set_defaults(func=check_formatting)
 
     args = parser.parse_args()
 
