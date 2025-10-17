@@ -81,19 +81,123 @@ questions
 ```
 
 
-## What if my snippet fails the check?
+## What if my question fails the check?
 
-The checker runs the snippet, gets the docker logs, represents those logs as a string (call that the _docker-output_), and canonicalizes the string.
+When checking outputs, the checker runs the question's snippet, gets the docker logs, represents those logs as a string (call that the _docker output_), and normalises the string.
+It compares the normalised docker output with the normalised given output.
+If these are different, it complains.
 
-The checker also reads the given output (from the anki note or wherever) and canonicalizes it.
+When checking formatting, the checker runs the question's snippet through a formatter, perhaps does some further formatting of its own, and compares the result to what it started with.
+If they're different, it complains.
 
-It compares the canonicalized docker output with the canonicalized given output.
+What to do when it complains?
+If you agree, the checker has done its job and you can update the question accordingly.
+If you disagree, you can:
+  1. adapt the checker to handle the question
+  2. adapt the question to something the checker can handle
+  3. tag the question as to be permanently ignored
 
-If these are different, first check whether the given output is correct.
+The right response depends on the case.
 
-If it's incorrect, the checker has done its job and you should update the given output.
+### Examples
 
-If it's correct, the checker has given a false negative, and you can either:
-  1. adapt the checker (e.g. improve canonicalizing)
-  2. adapt the snippet to something the checker can handle
-  3. mark the snippet (implementation TBD) as to be skipped
+#### Checking formatting
+
+```python
+print("foo" "bar")
+```
+
+`ruff` changes this to `print("foobar")`, but the point of the question is to show implicit string concatenation, so ignore.
+
+```python
+x = ()
+print(type(x))
+x = (1)
+print(type(x))
+x = (1,)
+print(type(x))
+```
+
+`ruff` changes the middle assignment to `x = 1`, but the point of the question is that these are equivalent, so ignore.
+
+```python
+def func(x, y, z):
+    return (x - y) * z
+
+print(func(x=1, 0, 2))
+```
+
+`ruff` can't parse, but the point of the question is _args before kwargs_, so ignore.
+
+```python
+from collections import deque
+
+d = deque(range(5))
+print(d)
+d.rotate(2); print(d)
+d.rotate(-2); print(d)
+d.rotate(-2); print(d)
+```
+
+`ruff` wants the prints on their own lines, but I think same-lines makes the point of the question clearer.
+
+```python
+matrix = [
+    [1, 2], 
+    [3, 4]
+]
+
+flattened = [
+    entry 
+    for row in matrix 
+    for entry in row
+]
+
+print(flattened)
+```
+
+`ruff` wants to collapse into single lines, but a point of the note is implicit line continuation.
+
+#### Checking output
+
+```
+with open("my_file.txt") as f:
+    for x in f:
+        print(x)
+
+assuming my_file.txt is "first\nsecond\nthird"
+```
+
+This is not Python so the checker can't handle it, but we can easily adapt it:
+
+```python
+with open("my_file.txt", "w") as f:
+    f.write("first\nsecond\nthird"
+
+with open("my_file.txt") as f:
+    for x in f:
+        print(x)
+```
+
+Similarly, the checker can't handle
+
+```python
+try:
+    x = input()
+    # user enters Ctrl-C
+except Exception as exception:
+    print("exception")
+finally:
+    print("finally")
+```
+
+but I don't see how to adapt the question, so ignore.
+
+The checker can't handle this either at the moment:
+
+```
+% echo 'print("gotcha")' > pip.py
+% python -m pip install requests
+```
+
+but it could be adapted to handle it.
