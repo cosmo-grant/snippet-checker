@@ -312,7 +312,7 @@ def check_output(args) -> int:
             "("
             f"{len(questions.fixed)} fixed, "
             f"{len(questions.ignored)} permanently ignored, "
-            f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} left)"
+            f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} left"
             ")"
         )
         return 1
@@ -330,7 +330,7 @@ def check_formatting(args) -> int:
             "("
             f"{len(questions.fixed)} fixed, "
             f"{len(questions.ignored)} permanently ignored, "
-            f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} left)"
+            f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} left"
             ")"
         )
         return 1
