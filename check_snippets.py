@@ -4,11 +4,20 @@ import subprocess
 import sys
 import time
 from argparse import ArgumentParser
+from enum import Enum
 from functools import cached_property
 from pathlib import Path
+from typing import Literal
 
 import docker
 from anki.storage import Collection
+
+
+class Tag(Enum):
+    "Question label, used to signal special treatment."
+
+    NO_CHECK_FORMATTING = "no_check_formatting"
+    NO_CHECK_OUTPUT = "no_check_output"
 
 
 class Output:
@@ -121,18 +130,25 @@ class Snippet:
 
 
 class Question:
-    def __init__(self, id: str, code: str, expected_output: str):
+    def __init__(self, id: str, code: str, expected_output: str, check_output: bool, check_formatting: bool):
         self.id = id
         self.snippet = Snippet(code)
         self.output = Output(expected_output)
+        self.check_output = check_output
+        self.check_formatting = check_formatting
 
     def has_ok_output(self) -> bool:
         return self.snippet.output.normalised == self.output.normalised
 
 
-def should_fix() -> bool:
-    response = input("Enter 'y' to overwrite: ")
-    return response == "y"
+def get_user_input() -> Literal["REPLACE", "IGNORE", "CONTINUE"]:
+    response = input("Enter 'r' to replace, 'i' to permanently ignore, anything else to continue: ")
+    if response == "r":
+        return "REPLACE"
+    elif response == "i":
+        return "IGNORE"
+    else:
+        return "CONTINUE"
 
 
 class AnkiQuestions:
@@ -142,6 +158,7 @@ class AnkiQuestions:
 
         self.failed: list[Question] = []
         self.fixed: list[Question] = []
+        self.ignored: list[Question] = []
 
         print(f"Looking for notes tagged '{tag}'.")
         note_ids = self.collection.find_notes("")
@@ -155,8 +172,10 @@ class AnkiQuestions:
             code = self.pre_process(code)
             code = self.html_to_plain(code)
             output = self.html_to_plain(output)
+            check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
+            check_format = Tag.NO_CHECK_FORMATTING.value not in note.tags
             id = note.id
-            questions.append(Question(str(id), code, output))
+            questions.append(Question(str(id), code, output, check_output, check_format))
         self.questions = questions
 
     def html_to_plain(self, html: str) -> str:
@@ -204,9 +223,31 @@ class AnkiQuestions:
         self.collection.update_note(note)
         self.fixed.append(question)
 
-    def check_output(self, offer_fix: bool) -> None:
+    def no_check_formatting(self, question: Question) -> None:
+        """
+        Add a tag to the given question's note, indicating this note should be ignored
+        when checking formatting, and write it to the anki database.
+        """
+        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
+        note.tags.append(Tag.NO_CHECK_FORMATTING.value)
+        self.collection.update_note(note)
+        self.ignored.append(question)
+
+    def no_check_output(self, question: Question) -> None:
+        """
+        Add a tag to the given question's note, indicating this note should be ignored
+        when checking outputs, and write it to the anki database.
+        """
+        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
+        note.tags.append(Tag.NO_CHECK_OUTPUT.value)
+        self.collection.update_note(note)
+        self.ignored.append(question)
+
+    def check_output(self, interactive: bool) -> None:
+        questions_to_check = [question for question in self.questions if question.check_output]
         print("----------")
-        for question in self.questions:
+
+        for question in questions_to_check:
             if not question.has_ok_output():
                 print(f"\N{CROSS MARK} unexpected output for {question.id}", end="\n\n")
                 print("Code:")
@@ -216,21 +257,27 @@ class AnkiQuestions:
                 print("Given (normalised):")
                 colour_print(question.output.normalised, colour="red", end="\n\n")
                 self.failed.append(question)
-                if offer_fix:
-                    response = should_fix()
-                    if response:
+                if interactive:
+                    response = get_user_input()
+                    if response == "REPLACE":
                         self.fix_output(question)
                         print("\N{SPARKLES} Fixed.", end="\n\n")
+                    elif response == "IGNORE":
+                        self.no_check_output(question)
+                        print("\N{SEE-NO-EVIL MONKEY} Permanently ignored.", end="\n\n")
                     else:
-                        print("Leaving as is.", end="\n\n")
+                        print("\N{FACE WITHOUT MOUTH} Leaving as is.", end="\n\n")
                 print("----------", end="\n\n")
 
-    def check_formatting(self, offer_fix: bool) -> None:
+    def check_formatting(self, interactive: bool) -> None:
+        questions_to_check = [question for question in self.questions if question.check_formatting]
         print("----------")
-        for question in self.questions:
+
+        for question in questions_to_check:
             formatted = question.snippet.format(compressed=True)
             if formatted is None:
                 # error when trying to format snippet
+                # treat as non-fixable failure
                 print(f"\N{CROSS MARK} error when formatting {question.id}", end="\n\n")
                 print("Given:")
                 colour_print(question.snippet.code, colour="red", end="\n\n")
@@ -243,23 +290,30 @@ class AnkiQuestions:
                 print("Given:")
                 colour_print(question.snippet.code, colour="red", end="\n\n")
                 self.failed.append(question)
-                if offer_fix:
-                    response = should_fix()
-                    if response:
+                if interactive:
+                    response = get_user_input()
+                    if response == "REPLACE":
                         self.fix_formatting(question)
                         print("\N{SPARKLES} Fixed.", end="\n\n")
+                    elif response == "IGNORE":
+                        self.no_check_formatting(question)
+                        print("\N{SEE-NO-EVIL MONKEY} Ignored.", end="\n\n")
                     else:
-                        print("Leaving as is.", end="\n\n")
+                        print("\N{FACE WITHOUT MOUTH} Leaving as is.", end="\n\n")
                 print("----------", end="\n\n")
 
 
 def check_output(args) -> int:
     questions = AnkiQuestions(tag=args.tag)
-    questions.check_output(args.fix)
+    questions.check_output(args.interactive)
     if questions.failed:
         print(
             f"{len(questions.failed)} questions had unexpected output "
-            f"({len(questions.fixed)} fixed, {len(questions.failed) - len(questions.fixed)} remaining)."
+            "("
+            f"{len(questions.fixed)} fixed, "
+            f"{len(questions.ignored)} permanently ignored, "
+            f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} left)"
+            ")"
         )
         return 1
     else:
@@ -269,11 +323,15 @@ def check_output(args) -> int:
 
 def check_formatting(args) -> int:
     questions = AnkiQuestions(tag=args.tag)
-    questions.check_formatting(args.fix)
+    questions.check_formatting(args.interactive)
     if questions.failed:
         print(
             f"{len(questions.failed)} questions had unexpected formatting "
-            f"({len(questions.fixed)} fixed, {len(questions.failed) - len(questions.fixed)} remaining)."
+            "("
+            f"{len(questions.fixed)} fixed, "
+            f"{len(questions.ignored)} permanently ignored, "
+            f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} left)"
+            ")"
         )
         return 1
     else:
@@ -298,11 +356,11 @@ def main() -> int:
     subparsers = parser.add_subparsers()
 
     check_parser = subparsers.add_parser("check", help="check snippet output")
-    check_parser.add_argument("--fix", action="store_true")
+    check_parser.add_argument("--interactive", action="store_true", help="get user input for whether to fix, ignore, or continue")
     check_parser.set_defaults(func=check_output)
 
     format_parser = subparsers.add_parser("format", help="check snippet formatting")
-    format_parser.add_argument("--fix", action="store_true")
+    format_parser.add_argument("--interactive", action="store_true")
     format_parser.set_defaults(func=check_formatting)
 
     args = parser.parse_args()
