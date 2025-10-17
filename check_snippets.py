@@ -103,17 +103,19 @@ class Snippet:
 
         return Output.from_logs(logs)
 
-    def format(self, compressed: bool = False) -> str:
+    def format(self, compressed: bool = False) -> str | None:
         called_process = subprocess.run(
             ["ruff", "format", "-"],
-            check=True,
             input=self.code,
             stdout=subprocess.PIPE,
             text=True,
         )
-        formatted = called_process.stdout
-        if compressed:
-            formatted = formatted.strip().replace("\n\n\n", "\n\n")
+        if called_process.returncode == 0:
+            formatted = called_process.stdout
+            if compressed:
+                formatted = formatted.strip().replace("\n\n\n", "\n\n")
+        else:
+            formatted = None
 
         return formatted
 
@@ -123,9 +125,6 @@ class Question:
         self.id = id
         self.snippet = Snippet(code)
         self.output = Output(expected_output)
-
-    def is_formatted(self, compressed: bool = False) -> bool:
-        return self.snippet.code == self.snippet.format(compressed)
 
     def has_ok_output(self) -> bool:
         return self.snippet.output.normalised == self.output.normalised
@@ -150,7 +149,7 @@ class AnkiQuestions:
         self.notes = [note for note in notes if tag in note.tags]
         print(f"Found {len(self.notes)} notes")
 
-        questions = []
+        questions: list[Question] = []
         for note in self.notes:
             code, output, _, _ = note.fields
             code = self.pre_process(code)
@@ -226,7 +225,14 @@ class AnkiQuestions:
 
     def check_formatting(self, offer_fix: bool) -> None:
         for question in self.questions:
-            if not question.is_formatted(compressed=True):
+            formatted = question.snippet.format(compressed=True)
+            if formatted is None:
+                # error when trying to format snippet
+                print(f"\N{CROSS MARK} error when formatting {question.id}")
+                print("Given:")
+                colour_print(question.snippet.code, colour="red")
+                self.failed.append(question)
+            elif formatted != question.snippet.code:
                 print(f"\N{CROSS MARK} unexpected formatting for {question.id}")
                 print("Formatted:")
                 colour_print(question.snippet.format(compressed=True), colour="green")
