@@ -353,7 +353,7 @@ def colour_print(string: str, colour: str, **kwargs) -> None:
 def main() -> int:
     parser = ArgumentParser()
     parser.add_argument("tag")
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(required=True)
 
     check_output_parser = subparsers.add_parser("check-output", help="check snippet output")
     check_output_parser.add_argument(
