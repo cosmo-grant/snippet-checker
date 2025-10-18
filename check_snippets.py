@@ -116,7 +116,7 @@ class Snippet:
         called_process = subprocess.run(
             ["ruff", "format", "-"],
             input=self.code,
-            stdout=subprocess.PIPE,
+            capture_output=True,
             text=True,
         )
         if called_process.returncode == 0:
