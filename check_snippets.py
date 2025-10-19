@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from argparse import ArgumentParser
 from enum import Enum
@@ -86,29 +87,56 @@ class Output:
 
 
 class Snippet:
-    "A python code snippet."
+    "A code snippet."
 
-    def __init__(self, code: str, python_version: str = "3.13"):
+    def __init__(self, language: str, code: str):
         os.environ["DOCKER_HOST"] = f"unix://{Path.home()}/.docker/run/docker.sock"
         self.client = docker.from_env()
+        self.language = language
         self.code = code
-        self.python_version = python_version
 
     @cached_property
     def output(self) -> Output:
-        container = self.client.containers.run(
-            f"python:{self.python_version}",
-            command=["python", "-u", "-c", self.code],
-            detach=True,
-        )
+        if self.language == "python":
+            container = self.client.containers.run(
+                "python:3.13",
+                command=["python", "-u", "-c", self.code],
+                detach=True,
+            )
+            logs = {}
+            start = time.perf_counter()
+            for line in container.logs(stream=True):  # blocks until \n
+                now = time.perf_counter()
+                delta = now - start
+                logs[delta] = line
 
-        logs = {}
-        start = time.perf_counter()
-        for line in container.logs(stream=True):  # blocks until \n
-            now = time.perf_counter()
-            delta = now - start
-            logs[delta] = line
+        elif self.language == "go":
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                with open(Path(tmpdirname) / "main.go", "w") as f:
+                    f.write(self.code)
+                # `go run` takes a while, producing a spurious <~2s> at start of the output
+                # so `go build` first, blocking until done, then execute
+                container = self.client.containers.run(
+                    "golang:1.25",
+                    command=["sleep", "100"],
+                    volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
+                    detach=True,
+                )
+                container.exec_run(["go", "build", "main.go"], workdir="/mnt/vol1")
+                res = container.exec_run(
+                    ["./main"],
+                    stream=True,
+                    workdir="/mnt/vol1",
+                )
 
+                logs = {}
+                start = time.perf_counter()
+                for line in res.output:  # ???blocks until \n
+                    now = time.perf_counter()
+                    delta = now - start
+                    logs[delta] = line
+
+        container.stop()
         container.remove()
 
         return Output.from_logs(logs)
@@ -131,9 +159,10 @@ class Snippet:
 
 
 class Question:
-    def __init__(self, id: str, code: str, expected_output: str, check_output: bool, check_formatting: bool):
+    def __init__(self, id: str, language: str, code: str, expected_output: str, check_output: bool, check_formatting: bool):
         self.id = id
-        self.snippet = Snippet(code)
+        self.language = language
+        self.snippet = Snippet(language, code)
         self.output = Output(expected_output)
         self.check_output = check_output
         self.check_formatting = check_formatting
@@ -169,14 +198,15 @@ class AnkiQuestions:
 
         questions: list[Question] = []
         for note in self.notes:
-            code, output, _, _ = note.fields
+            code, output, _, context = note.fields
+            language = "go" if context.startswith("Go") else "python"
             code = self.pre_process(code)
             code = self.html_to_plain(code)
             output = self.html_to_plain(output)
             check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
             check_format = Tag.NO_CHECK_FORMATTING.value not in note.tags
             id = note.id
-            questions.append(Question(str(id), code, output, check_output, check_format))
+            questions.append(Question(str(id), language, code, output, check_output, check_format))
         self.questions = questions
 
     def html_to_plain(self, html: str) -> str:
@@ -198,7 +228,9 @@ class AnkiQuestions:
         return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def pre_process(self, code: str) -> str:
-        return code.removeprefix('<pre><code class="lang-python">').removesuffix("</code></pre>")
+        return (
+            code.removeprefix('<pre><code class="lang-python">').removeprefix('<pre><code class="lang-go">').removesuffix("</code></pre>")
+        )
 
     def post_process(self, code: str) -> str:
         return f'<pre><code class="lang-python">{code}</code></pre>'
