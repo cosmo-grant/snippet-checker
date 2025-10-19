@@ -116,22 +116,23 @@ class Snippet:
                     f.write(self.code)
                 # `go run` takes a while, producing a spurious <~2s> at start of the output
                 # so `go build` first, blocking until done, then execute
+                self.client.containers.run(
+                    "golang:1.25",
+                    command=["go", "build", "main.go"],
+                    volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
+                    working_dir="/mnt/vol1"
+                )
                 container = self.client.containers.run(
                     "golang:1.25",
-                    command=["sleep", "100"],
+                    command=["./main"],
                     volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
+                    working_dir="/mnt/vol1",
                     detach=True,
-                )
-                container.exec_run(["go", "build", "main.go"], workdir="/mnt/vol1")
-                res = container.exec_run(
-                    ["./main"],
-                    stream=True,
-                    workdir="/mnt/vol1",
                 )
 
                 logs = {}
                 start = time.perf_counter()
-                for line in res.output:  # ???blocks until \n
+                for line in container.logs(stream=True):  # blocks until \n
                     now = time.perf_counter()
                     delta = now - start
                     logs[delta] = line
