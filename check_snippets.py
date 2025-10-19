@@ -100,7 +100,6 @@ class Snippet:
             f"python:{self.python_version}",
             command=["python", "-u", "-c", self.code],
             detach=True,
-            auto_remove=True,
         )
 
         logs = {}
@@ -109,6 +108,8 @@ class Snippet:
             now = time.perf_counter()
             delta = now - start
             logs[delta] = line
+
+        container.remove()
 
         return Output.from_logs(logs)
 
