@@ -358,13 +358,13 @@ def main() -> int:
 
     check_output_parser = subparsers.add_parser("check-output", help="check snippet output")
     check_output_parser.add_argument(
-        "-i", "--interactive", action="store_true", help="get user input for whether to fix, ignore, or continue"
+        "-i", "--interactive", action="store_true", help="get user input for whether to fix, ignore in future, or leave as is"
     )
     check_output_parser.set_defaults(func=check_output)
 
     check_formatting_parser = subparsers.add_parser("check-formatting", help="check snippet formatting")
     check_formatting_parser.add_argument(
-        "--interactive", action="store_true", help="get user input for whether to fix, ignore, or continue"
+        "--interactive", action="store_true", help="get user input for whether to fix, ignore in future, or leave as is"
     )
     check_formatting_parser.set_defaults(func=check_formatting)
 
