@@ -120,7 +120,7 @@ class Snippet:
                     "golang:1.25",
                     command=["go", "build", "main.go"],
                     volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
-                    working_dir="/mnt/vol1"
+                    working_dir="/mnt/vol1",
                 )
                 container = self.client.containers.run(
                     "golang:1.25",
@@ -137,24 +137,43 @@ class Snippet:
                     delta = now - start
                     logs[delta] = line
 
-        container.stop()
         container.remove()
 
         return Output.from_logs(logs)
 
     def format(self, compressed: bool = False) -> str | None:
-        called_process = subprocess.run(
-            ["ruff", "format", "-"],
-            input=self.code,
-            capture_output=True,
-            text=True,
-        )
-        if called_process.returncode == 0:
-            formatted = called_process.stdout
-            if compressed:
-                formatted = formatted.strip().replace("\n\n\n", "\n\n")
-        else:
-            formatted = None
+        if self.language == "python":
+            called_process = subprocess.run(
+                ["ruff", "format", "-"],
+                input=self.code,
+                capture_output=True,
+                text=True,
+            )
+            if called_process.returncode == 0:
+                formatted = called_process.stdout
+                if compressed:
+                    formatted = formatted.strip().replace("\n\n\n", "\n\n")
+            else:
+                formatted = None
+
+        elif self.language == "go":
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                with open(Path(tmpdirname) / "main.go", "w") as f:
+                    f.write(self.code)
+                try:
+                    self.client.containers.run(
+                        "golang:1.25",
+                        command=["gofmt", "main.go"],
+                        volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
+                        working_dir="/mnt/vol1",
+                    )
+                except docker.errors.ContainerError:
+                    formatted = None
+                else:
+                    with open(Path(tmpdirname) / "main.go") as f:
+                        formatted = f.read()
+                    if compressed:
+                        formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
         return formatted
 
@@ -233,8 +252,8 @@ class AnkiQuestions:
             code.removeprefix('<pre><code class="lang-python">').removeprefix('<pre><code class="lang-go">').removesuffix("</code></pre>")
         )
 
-    def post_process(self, code: str) -> str:
-        return f'<pre><code class="lang-python">{code}</code></pre>'
+    def post_process(self, code: str, question: Question) -> str:
+        return f'<pre><code class="lang-{question.language}">{code}</code></pre>'
 
     def fix_output(self, question: Question) -> None:
         "Write the normalised, marked up output of the given question's snippet to the anki database."
@@ -252,7 +271,7 @@ class AnkiQuestions:
         formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
         assert formatted is not None  # we only fix if no error when formatting
         formatted = self.escape_html(formatted)
-        formatted = self.post_process(formatted)
+        formatted = self.post_process(formatted, question)
         note.fields[0] = formatted
         self.collection.update_note(note)
         self.fixed.append(question)
