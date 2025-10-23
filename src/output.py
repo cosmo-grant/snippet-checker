@@ -89,6 +89,20 @@ class PythonOutput(Output):
 class GoOutput(Output):
     "A representation of a Go snippet's output."
 
+    memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
+    panic = re.compile(
+        r"(panic: .*?\n)"  # the line we want
+        r".*",  # the rest
+        re.DOTALL,
+    )
+    stack_overflow = re.compile(
+        r"runtime: goroutine stack exceeds.*limit\n"
+        r"runtime:.*\n"
+        r"(fatal error: stack overflow\n)"  # the line we want
+        r".*",  # the rest
+        re.DOTALL,
+    )
+
     def __init__(self, output: str) -> None:
         super().__init__(output)
 
@@ -96,6 +110,30 @@ class GoOutput(Output):
     def from_logs(cls, logs: dict[float, bytes]) -> GoOutput:
         return super().from_logs(logs)
 
+    def normalise_memory_addresses(self, output: str) -> str:
+        seen = set()
+        normalised = output
+        for match in re.finditer(self.memory_address, output):
+            address = match.group()
+            if address in seen:
+                continue
+            seen.add(address)
+            normalised = normalised.replace(address, f"0x{len(seen)}")
+
+        return normalised
+
     def normalise(self, output: str) -> str:
+        output = self.normalise_memory_addresses(output)
+        output = self.normalise_panic(output)
+        output = self.normalise_stack_overflow(output)
         output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
+
         return output
+
+    def normalise_panic(self, output: str) -> str:
+        normalised = re.sub(self.panic, r"\1", output)
+        return normalised
+
+    def normalise_stack_overflow(self, output: str) -> str:
+        normalised = re.sub(self.stack_overflow, r"\1", output)
+        return normalised
