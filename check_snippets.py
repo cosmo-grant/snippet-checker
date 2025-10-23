@@ -1,17 +1,13 @@
-import os
-import re
-import subprocess
 import sys
-import tempfile
-import time
 from argparse import ArgumentParser
 from enum import Enum
-from functools import cached_property
 from pathlib import Path
 from typing import Literal
 
-import docker
 from anki.storage import Collection
+
+from output import GoOutput, Output, PythonOutput
+from snippet import GoSnippet, PythonSnippet, Snippet
 
 
 class Tag(Enum):
@@ -21,169 +17,20 @@ class Tag(Enum):
     NO_CHECK_OUTPUT = "no_check_output"
 
 
-class Output:
-    "A representation of a snippet's output."
-
-    memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
-    traceback_except_for_last_line = re.compile(
-        r"Traceback \(most\ recent\ call\ last\):\n"  # start of traceback
-        r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
-    )  # a traceback's last line doesn't start with whitespace so won't be captured
-    location_info = re.compile(r'  File "<string>", line.*\n')
-
-    def __init__(self, output: str) -> None:
-        self.raw = output
-        self.normalised = self.normalise(output)
-
-    @classmethod
-    def from_logs(cls, logs: dict[float, bytes]) -> "Output":
-        "Alternative constructor, creating an output from timed docker logs."
-
-        rounded_logs: dict[int, str] = {}
-        # insertion order should be ascending t, but let's be clear and cautious
-        for t in sorted(logs):
-            rounded_t = round(t)
-            line = logs[t].decode("utf-8")
-            rounded_logs[rounded_t] = rounded_logs.get(rounded_t, "") + line
-
-        output = ""
-        previous = 0
-        for t, line in rounded_logs.items():
-            delta = t - previous
-            output += f"<~{delta}s>\n"
-            output += line
-            previous = t
-        output = output.removeprefix("<~0s>\n")
-
-        return Output(output)
-
-    def normalise(self, output: str) -> str:
-        output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
-        output = self.normalise_memory_addresses(output)
-        output = self.normalise_traceback(output)
-        output = self.normalise_location_info(output)
-        return output
-
-    def normalise_memory_addresses(self, output: str) -> str:
-        seen = set()
-        normalised = output
-        for match in re.finditer(self.memory_address, output):
-            address = match.group()
-            if address in seen:
-                continue
-            seen.add(address)
-            normalised = normalised.replace(address, f"0x{len(seen)}")
-
-        return normalised
-
-    def normalise_traceback(self, output: str) -> str:
-        normalised = re.sub(self.traceback_except_for_last_line, "", output)
-
-        return normalised
-
-    def normalise_location_info(self, output: str) -> str:
-        normalised = re.sub(self.location_info, "", output)
-        return normalised
-
-
-class Snippet:
-    "A code snippet."
-
-    def __init__(self, language: str, code: str):
-        os.environ["DOCKER_HOST"] = f"unix://{Path.home()}/.docker/run/docker.sock"
-        self.client = docker.from_env()
-        self.language = language
-        self.code = code
-
-    @cached_property
-    def output(self) -> Output:
-        if self.language == "python":
-            container = self.client.containers.run(
-                "python:3.13",
-                command=["python", "-u", "-c", self.code],
-                detach=True,
-            )
-            logs = {}
-            start = time.perf_counter()
-            for line in container.logs(stream=True):  # blocks until \n
-                now = time.perf_counter()
-                delta = now - start
-                logs[delta] = line
-
-        elif self.language == "go":
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                with open(Path(tmpdirname) / "main.go", "w") as f:
-                    f.write(self.code)
-                # `go run` takes a while, producing a spurious <~2s> at start of the output
-                # so `go build` first, blocking until done, then execute
-                self.client.containers.run(
-                    "golang:1.25",
-                    command=["go", "build", "main.go"],
-                    volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
-                    working_dir="/mnt/vol1",
-                )
-                container = self.client.containers.run(
-                    "golang:1.25",
-                    command=["./main"],
-                    volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
-                    working_dir="/mnt/vol1",
-                    detach=True,
-                )
-
-                logs = {}
-                start = time.perf_counter()
-                for line in container.logs(stream=True):  # blocks until \n
-                    now = time.perf_counter()
-                    delta = now - start
-                    logs[delta] = line
-
-        container.remove()
-
-        return Output.from_logs(logs)
-
-    def format(self, compressed: bool = False) -> str | None:
-        if self.language == "python":
-            called_process = subprocess.run(
-                ["ruff", "format", "-"],
-                input=self.code,
-                capture_output=True,
-                text=True,
-            )
-            if called_process.returncode == 0:
-                formatted = called_process.stdout
-                if compressed:
-                    formatted = formatted.strip().replace("\n\n\n", "\n\n")
-            else:
-                formatted = None
-
-        elif self.language == "go":
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                with open(Path(tmpdirname) / "main.go", "w") as f:
-                    f.write(self.code)
-                try:
-                    self.client.containers.run(
-                        "golang:1.25",
-                        command=["gofmt", "main.go"],
-                        volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
-                        working_dir="/mnt/vol1",
-                    )
-                except docker.errors.ContainerError:
-                    formatted = None
-                else:
-                    with open(Path(tmpdirname) / "main.go") as f:
-                        formatted = f.read()
-                    if compressed:
-                        formatted = formatted.strip().replace("\n\n\n", "\n\n")
-
-        return formatted
-
-
 class Question:
     def __init__(self, id: str, language: str, code: str, expected_output: str, check_output: bool, check_formatting: bool):
         self.id = id
         self.language = language
-        self.snippet = Snippet(language, code)
-        self.output = Output(expected_output)
+        self.snippet: Snippet
+        self.output: Output
+        if language == "go":
+            self.snippet = GoSnippet(code)
+            self.output = GoOutput(expected_output)
+        elif language == "python":
+            self.snippet = PythonSnippet(code)
+            self.output = PythonOutput(expected_output)
+        else:
+            raise ValueError(f"Unsupported language: {language}")
         self.check_output = check_output
         self.check_formatting = check_formatting
 
