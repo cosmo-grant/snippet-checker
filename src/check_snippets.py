@@ -1,9 +1,10 @@
 import sys
 from argparse import ArgumentParser
+from pathlib import Path
 from typing import Literal
 
 from question import Question, Tag
-from repository import AnkiRepository, Repository
+from repository import AnkiRepository, DirectoryRepository, Repository
 
 
 def get_user_input() -> Literal["REPLACE", "IGNORE", "LEAVE"]:
@@ -17,12 +18,12 @@ def get_user_input() -> Literal["REPLACE", "IGNORE", "LEAVE"]:
 
 
 class Questions:
-    def __init__(self, tag: str, repository: Repository):
+    def __init__(self, target: str, repository: Repository):
         self.failed: list[Question] = []
         self.fixed: list[Question] = []
         self.ignored: list[Question] = []
         self.repository = repository
-        self.questions = repository.get(tag)
+        self.questions = repository.get(target)
 
     def fix_output(self, question: Question) -> None:
         self.repository.fix_output(question)
@@ -71,7 +72,7 @@ class Questions:
         print("----------")
 
         for question in questions_to_check:
-            formatted = question.snippet.format(compressed=True)
+            formatted = question.snippet.format(compressed=isinstance(self.repository, AnkiRepository))  # TODO: hack
             if formatted is None:
                 # error when trying to format snippet
                 # treat as non-fixable failure
@@ -101,7 +102,8 @@ class Questions:
 
 
 def check_output(args) -> int:
-    questions = Questions(tag=args.tag, repository=AnkiRepository())
+    repository = DirectoryRepository() if Path(args.target).is_dir() else AnkiRepository()
+    questions = Questions(target=args.target, repository=repository)
     questions.check_output(args.interactive)
     if questions.failed:
         print(
@@ -119,7 +121,8 @@ def check_output(args) -> int:
 
 
 def check_formatting(args) -> int:
-    questions = Questions(tag=args.tag, repository=AnkiRepository())
+    repository = DirectoryRepository() if Path(args.target).is_dir() else AnkiRepository()
+    questions = Questions(target=args.target, repository=repository)
     questions.check_formatting(args.interactive)
     if questions.failed:
         print(
@@ -149,7 +152,7 @@ def colour_print(string: str, colour: str, **kwargs) -> None:
 
 def main() -> int:
     parser = ArgumentParser()
-    parser.add_argument("tag")
+    parser.add_argument("target", help="directory or anki tag of the questions you want to check")
     subparsers = parser.add_subparsers(required=True)
 
     check_output_parser = subparsers.add_parser("check-output", help="check snippet output")

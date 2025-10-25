@@ -24,6 +24,51 @@ class Repository(ABC):
         raise NotImplementedError
 
 
+class DirectoryRepository(Repository):
+    EXTENSIONS = {
+        ".py": "python",
+        ".go": "go",
+    }
+
+    @classmethod
+    def extension_from_language(cls, language: str) -> str:  # TODO: enum instead?
+        return next(ext for ext, lang in cls.EXTENSIONS.items() if lang == language)
+
+    def get(self, dir: str) -> list[Question]:
+        questions_dir = Path(dir)
+        print(f"Looking for questions in directory '{dir}'.")
+
+        questions: list[Question] = []
+        for question_dir in questions_dir.iterdir():
+            snippet_path = next(question_dir.glob("snippet.*"))
+            language = self.EXTENSIONS[snippet_path.suffix]
+            with open(snippet_path) as f:
+                code = f.read()
+            with open(question_dir / "output.txt") as f:
+                output = f.read()
+            questions.append(Question(question_dir, language, code, output, True, True))  # TODO: tags
+
+        return questions
+
+    def fix_output(self, question: Question) -> None:
+        "Write the normalised output of the given question's snippet to disk, overwriting the existing output."
+        assert isinstance(question.id, Path)
+        with open(question.id / "output.txt", "w") as f:
+            f.write(question.output.normalised)
+
+    def fix_formatting(self, question: Question) -> None:
+        "Write a formatted version of the given question's snippet to disk, overwriting the existing snippet."
+        assert isinstance(question.id, Path)
+        formatted = question.snippet.format()
+        assert formatted is not None  # we only fix if no error when formatting
+        extension = self.extension_from_language(question.language)
+        with open(question.id / f"snippet{extension}", "w") as f:
+            f.write(formatted)
+
+    def add_tag(self, question: Question, tag: Tag) -> None:
+        pass
+
+
 class AnkiRepository(Repository):
     def __init__(self):
         path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
@@ -46,22 +91,24 @@ class AnkiRepository(Repository):
             check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
             check_format = Tag.NO_CHECK_FORMATTING.value not in note.tags
             id = note.id
-            questions.append(Question(str(id), language, code, output, check_output, check_format))
+            questions.append(Question(id, language, code, output, check_output, check_format))
 
         return questions
 
     def fix_output(self, question: Question) -> None:
         "Write the normalised, marked up output of the given question's snippet to the anki database."
-        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
+        assert isinstance(question.id, int)
+        note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         note_output = self.escape_html(question.output.normalised)
         note.fields[1] = note_output
         self.collection.update_note(note)
 
     def fix_formatting(self, question) -> None:
         "Write a formatted version of the given question's snippet to the anki database."
+        assert isinstance(question.id, int)
         formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
         assert formatted is not None  # we only fix if no error when formatting
-        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
+        note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         formatted = self.escape_html(formatted)
         formatted = self.post_process(formatted, question.language)
         note.fields[0] = formatted

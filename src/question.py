@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 
 from output import GoOutput, Output, PythonOutput
 from snippet import GoSnippet, PythonSnippet, Snippet
@@ -12,7 +13,7 @@ class Tag(Enum):
 
 
 class Question:
-    def __init__(self, id: str, language: str, code: str, expected_output: str, check_output: bool, check_formatting: bool):
+    def __init__(self, id: int | Path, language: str, code: str, expected_output: str, check_output: bool, check_formatting: bool):
         self.id = id
         self.language = language
         self.snippet: Snippet
