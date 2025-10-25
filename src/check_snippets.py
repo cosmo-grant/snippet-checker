@@ -22,7 +22,6 @@ def check_output(repository: Repository, interactive: bool) -> int:
     failed: list[Question] = []
     fixed: list[Question] = []
     ignored: list[Question] = []
-    repository = repository
     questions = repository.get()
     questions_to_check = [question for question in questions if question.check_output]
     print("----------")
@@ -70,7 +69,6 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
     failed: list[Question] = []
     fixed: list[Question] = []
     ignored: list[Question] = []
-    repository = repository
     questions = repository.get()
     questions_to_check = [question for question in questions if question.check_formatting]
     print("----------")
