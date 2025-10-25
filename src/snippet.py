@@ -111,7 +111,7 @@ class GoSnippet(Snippet):
             try:
                 self.client.containers.run(
                     "golang:1.25",
-                    command=["gofmt", "main.go"],
+                    command=["go", "fmt", "main.go"],
                     volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
                     working_dir="/mnt/vol1",
                 )
