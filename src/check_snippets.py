@@ -7,14 +7,15 @@ from question import Question, Tag
 from repository import AnkiRepository, DirectoryRepository, Repository
 
 
-def get_user_input() -> Literal["REPLACE", "IGNORE", "LEAVE"]:
-    response = input("Enter 'r' to replace, 'i' to permanently ignore, anything else to leave as is: ")
+def get_user_input() -> Literal["REPLACE", "IGNORE", "MOVE ON"]:
+    print()
+    response = input("Enter 'r' to replace, 'i' to ignore in future, anything else to move on: ")
     if response == "r":
         return "REPLACE"
     elif response == "i":
         return "IGNORE"
     else:
-        return "LEAVE"
+        return "MOVE ON"
 
 
 class Questions:
@@ -62,9 +63,9 @@ class Questions:
                         print("\N{SPARKLES} Replaced.", end="\n\n")
                     elif response == "IGNORE":
                         self.no_check_output(question)
-                        print("\N{SEE-NO-EVIL MONKEY} Permanently ignored.", end="\n\n")
+                        print("\N{SEE-NO-EVIL MONKEY} Will ignore in future.", end="\n\n")
                     else:
-                        print("\N{FACE WITHOUT MOUTH} Leaving as is.", end="\n\n")
+                        print("\N{FACE WITHOUT MOUTH} Moving on.", end="\n\n")
                 print("----------", end="\n\n")
 
     def check_formatting(self, interactive: bool) -> None:
@@ -78,27 +79,27 @@ class Questions:
                 # treat as non-fixable failure
                 print(f"\N{CROSS MARK} Error when formatting {question.id}.", end="\n\n")
                 print("Given:")
-                colour_print(question.snippet.code, colour="red", end="\n\n")
+                colour_print(question.snippet.code, colour="red")
                 self.failed.append(question)
-                print("----------", end="\n\n")
+                print("----------")
             elif formatted != question.snippet.code:
                 print(f"\N{CROSS MARK} Unexpected formatting for {question.id}.", end="\n\n")
                 print("Formatted:")
                 colour_print(formatted, colour="green", end="\n\n")
                 print("Given:")
-                colour_print(question.snippet.code, colour="red", end="\n\n")
+                colour_print(question.snippet.code, colour="red")
                 self.failed.append(question)
                 if interactive:
                     response = get_user_input()
                     if response == "REPLACE":
                         self.fix_formatting(question)
-                        print("\N{SPARKLES} Replaced.", end="\n\n")
+                        print("\N{SPARKLES} Replaced.")
                     elif response == "IGNORE":
                         self.no_check_formatting(question)
-                        print("\N{SEE-NO-EVIL MONKEY} Permanently ignored.", end="\n\n")
+                        print("\N{SEE-NO-EVIL MONKEY} Will ignore in future.")
                     else:
-                        print("\N{FACE WITHOUT MOUTH} Leaving as is.", end="\n\n")
-                print("----------", end="\n\n")
+                        print("\N{FACE WITHOUT MOUTH} Moving on.")
+                print("----------")
 
 
 def check_output(args) -> int:
@@ -107,16 +108,16 @@ def check_output(args) -> int:
     questions.check_output(args.interactive)
     if questions.failed:
         print(
-            f"{len(questions.failed)} questions had unexpected output "
+            f"{len(questions.failed)} questions had bad output "
             "("
             f"{len(questions.fixed)} fixed, "
-            f"{len(questions.ignored)} permanently ignored, "
-            f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} left"
+            f"{len(questions.ignored)} will be ignored in future, "
+            f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} remaining"
             ")"
         )
         return 1
     else:
-        print("All good.")
+        print("\N{WHITE HEAVY CHECK MARK} All good.")
         return 0
 
 
@@ -126,16 +127,16 @@ def check_formatting(args) -> int:
     questions.check_formatting(args.interactive)
     if questions.failed:
         print(
-            f"{len(questions.failed)} questions had unexpected formatting "
+            f"{len(questions.failed)} questions had bad formatting "
             "("
             f"{len(questions.fixed)} fixed, "
-            f"{len(questions.ignored)} permanently ignored, "
+            f"{len(questions.ignored)} will be ignored in future, "
             f"{len(questions.failed) - len(questions.fixed) - len(questions.ignored)} left"
             ")"
         )
         return 1
     else:
-        print("All good.")
+        print("\N{WHITE HEAVY CHECK MARK} All good.")
         return 0
 
 

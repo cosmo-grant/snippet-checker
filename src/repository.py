@@ -46,7 +46,13 @@ class DirectoryRepository(Repository):
                 code = f.read()
             with open(question_dir / "output.txt") as f:
                 output = f.read()
-            questions.append(Question(question_dir, language, code, output, True, True))  # TODO: tags
+            with open(question_dir / "tags.txt") as f:
+                tags = {line.strip() for line in f}
+            check_output = Tag.NO_CHECK_OUTPUT.value in tags
+            check_formatting = Tag.NO_CHECK_FORMATTING.value in tags
+            questions.append(Question(question_dir, language, code, output, check_output, check_formatting))
+
+        print(f"Found {len(questions)} questions.")
 
         return questions
 
@@ -80,6 +86,7 @@ class AnkiRepository(Repository):
         notes = [self.collection.get_note(id) for id in note_ids]
         self.notes = [note for note in notes if tag in note.tags]
         print(f"Found {len(self.notes)} notes")
+        print(f"Found {len(self.notes)} notes.")
 
         questions: list[Question] = []
         for note in self.notes:
