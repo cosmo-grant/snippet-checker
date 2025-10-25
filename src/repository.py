@@ -48,10 +48,15 @@ class DirectoryRepository(Repository):
                 code = f.read()
             with open(question_dir / "output.txt") as f:
                 output = f.read()
-            with open(question_dir / "tags.txt") as f:
-                tags = {line.strip() for line in f}
-            check_output = Tag.NO_CHECK_OUTPUT.value in tags
-            check_formatting = Tag.NO_CHECK_FORMATTING.value in tags
+            try:
+                with open(question_dir / "tags.txt") as f:
+                    tags = {line.strip() for line in f}
+            except FileNotFoundError:
+                check_output = True
+                check_formatting = True
+            else:
+                check_output = Tag.NO_CHECK_OUTPUT.value in tags
+                check_formatting = Tag.NO_CHECK_FORMATTING.value in tags
             questions.append(Question(question_dir, language, code, output, check_output, check_formatting))
 
         print(f"Found {len(questions)} questions.")
