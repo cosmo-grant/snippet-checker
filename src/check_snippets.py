@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from question import Question, Tag
-from repository import AnkiRepository, DirectoryRepository
+from repository import AnkiRepository, DirectoryRepository, Repository
 
 
 def get_user_input() -> Literal["REPLACE", "IGNORE", "MOVE ON"]:
@@ -18,13 +18,12 @@ def get_user_input() -> Literal["REPLACE", "IGNORE", "MOVE ON"]:
         return "MOVE ON"
 
 
-def check_output(args) -> int:
-    repository = DirectoryRepository() if Path(args.target).is_dir() else AnkiRepository()
+def check_output(repository: Repository, interactive: bool) -> int:
     failed: list[Question] = []
     fixed: list[Question] = []
     ignored: list[Question] = []
     repository = repository
-    questions = repository.get(args.target)
+    questions = repository.get()
     questions_to_check = [question for question in questions if question.check_output]
     print("----------")
 
@@ -38,7 +37,7 @@ def check_output(args) -> int:
             print("Given (normalised):")
             colour_print(question.output.normalised, colour="red", end="\n\n")
             failed.append(question)
-            if args.interactive:
+            if interactive:
                 response = get_user_input()
                 if response == "REPLACE":
                     repository.fix_output(question)
@@ -67,13 +66,12 @@ def check_output(args) -> int:
         return 0
 
 
-def check_formatting(args) -> int:
-    repository = DirectoryRepository() if Path(args.target).is_dir() else AnkiRepository()
+def check_formatting(repository: Repository, interactive: bool) -> int:
     failed: list[Question] = []
     fixed: list[Question] = []
     ignored: list[Question] = []
     repository = repository
-    questions = repository.get(args.target)
+    questions = repository.get()
     questions_to_check = [question for question in questions if question.check_formatting]
     print("----------")
 
@@ -94,7 +92,7 @@ def check_formatting(args) -> int:
             print("Given:")
             colour_print(question.snippet.code, colour="red")
             failed.append(question)
-            if args.interactive:
+            if interactive:
                 response = get_user_input()
                 if response == "REPLACE":
                     repository.fix_formatting(question)
@@ -153,7 +151,11 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    exit_code = args.func(args)
+    # how to tell if the target is meant to be taken as a directory or an anki tag?
+    # i take a simple, risky approach: take it as a directory if a same-named directory exists, else an anki tag
+    maybe_dir = Path(args.target)
+    repository = DirectoryRepository(maybe_dir) if maybe_dir.is_dir() else AnkiRepository(args.target)
+    exit_code = args.func(repository, args.interactive)
     return exit_code
 
 

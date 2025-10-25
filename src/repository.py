@@ -8,7 +8,7 @@ from question import Question, Tag
 
 class Repository(ABC):
     @abstractmethod
-    def get(self, tag: str) -> list[Question]:
+    def get(self) -> list[Question]:
         raise NotImplementedError
 
     @abstractmethod
@@ -34,12 +34,14 @@ class DirectoryRepository(Repository):
     def extension_from_language(cls, language: str) -> str:  # TODO: enum instead?
         return next(ext for ext, lang in cls.EXTENSIONS.items() if lang == language)
 
-    def get(self, dir: str) -> list[Question]:
-        questions_dir = Path(dir)
-        print(f"Looking for questions in directory '{dir}'.")
+    def __init__(self, dir: Path):
+        self.dir = dir
+
+    def get(self) -> list[Question]:
+        print(f"Looking for questions in directory '{self.dir}'.")
 
         questions: list[Question] = []
-        for question_dir in questions_dir.iterdir():
+        for question_dir in self.dir.iterdir():
             snippet_path = next(question_dir.glob("snippet.*"))
             language = self.EXTENSIONS[snippet_path.suffix]
             with open(snippet_path) as f:
@@ -76,16 +78,16 @@ class DirectoryRepository(Repository):
 
 
 class AnkiRepository(Repository):
-    def __init__(self):
+    def __init__(self, tag: str):
         path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
         self.collection = Collection(str(path))
+        self.tag = tag
 
-    def get(self, tag: str) -> list[Question]:
-        print(f"Looking for notes tagged '{tag}'.")
+    def get(self) -> list[Question]:
+        print(f"Looking for notes tagged '{self.tag}'.")
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
-        self.notes = [note for note in notes if tag in note.tags]
-        print(f"Found {len(self.notes)} notes")
+        self.notes = [note for note in notes if self.tag in note.tags]
         print(f"Found {len(self.notes)} notes.")
 
         questions: list[Question] = []
