@@ -29,27 +29,27 @@ def check_output(repository: Repository, interactive: bool) -> int:
 
     for question in questions_to_check:
         if not question.has_ok_output():
-            print(f"\N{CROSS MARK} Unexpected output for {question.id}.", end="\n\n")
+            print(f"\N{CROSS MARK} Bad output for {question.id}.", end="\n\n")
             print("Code:")
             colour_print(question.snippet.code, colour="cyan", end="\n\n")
             print("Output (normalised):")
             colour_print(question.snippet.output.normalised, colour="green", end="\n\n")
             print("Given (normalised):")
-            colour_print(question.output.normalised, colour="red", end="\n\n")
+            colour_print(question.output.normalised, colour="red")
             failed.append(question)
             if interactive:
                 response = get_user_input()
                 if response == "REPLACE":
                     repository.fix_output(question)
                     fixed.append(question)
-                    print("\N{SPARKLES} Replaced.", end="\n\n")
+                    print("\N{SPARKLES} Replaced.")
                 elif response == "IGNORE":
                     repository.add_tag(question, Tag.NO_CHECK_OUTPUT)
                     ignored.append(question)
-                    print("\N{SEE-NO-EVIL MONKEY} Will ignore in future.", end="\n\n")
+                    print("\N{SEE-NO-EVIL MONKEY} Will ignore in future.")
                 else:
-                    print("\N{FACE WITHOUT MOUTH} Moving on.", end="\n\n")
-            print("----------", end="\n\n")
+                    print("\N{FACE WITHOUT MOUTH} Moving on.")
+            print("----------")
 
     if failed:
         print(
@@ -86,7 +86,7 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
             failed.append(question)
             print("----------")
         elif formatted != question.snippet.code:
-            print(f"\N{CROSS MARK} Unexpected formatting for {question.id}.", end="\n\n")
+            print(f"\N{CROSS MARK} Bad formatting for {question.id}.", end="\n\n")
             print("Formatted:")
             colour_print(formatted, colour="green", end="\n\n")
             print("Given:")
