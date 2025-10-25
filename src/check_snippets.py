@@ -1,41 +1,9 @@
 import sys
 from argparse import ArgumentParser
-from enum import Enum
-from pathlib import Path
 from typing import Literal
 
-from anki.storage import Collection
-
-from output import GoOutput, Output, PythonOutput
-from snippet import GoSnippet, PythonSnippet, Snippet
-
-
-class Tag(Enum):
-    "Question label, used to signal special treatment."
-
-    NO_CHECK_FORMATTING = "no_check_formatting"
-    NO_CHECK_OUTPUT = "no_check_output"
-
-
-class Question:
-    def __init__(self, id: str, language: str, code: str, expected_output: str, check_output: bool, check_formatting: bool):
-        self.id = id
-        self.language = language
-        self.snippet: Snippet
-        self.output: Output
-        if language == "go":
-            self.snippet = GoSnippet(code)
-            self.output = GoOutput(expected_output)
-        elif language == "python":
-            self.snippet = PythonSnippet(code)
-            self.output = PythonOutput(expected_output)
-        else:
-            raise ValueError(f"Unsupported language: {language}")
-        self.check_output = check_output
-        self.check_formatting = check_formatting
-
-    def has_ok_output(self) -> bool:
-        return self.snippet.output.normalised == self.output.normalised
+from question import Question, Tag
+from repository import AnkiRepository, Repository
 
 
 def get_user_input() -> Literal["REPLACE", "IGNORE", "LEAVE"]:
@@ -48,99 +16,28 @@ def get_user_input() -> Literal["REPLACE", "IGNORE", "LEAVE"]:
         return "LEAVE"
 
 
-class AnkiQuestions:
-    def __init__(self, tag: str):
-        path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
-        self.collection = Collection(str(path))
-
+class Questions:
+    def __init__(self, tag: str, repository: Repository):
         self.failed: list[Question] = []
         self.fixed: list[Question] = []
         self.ignored: list[Question] = []
-
-        print(f"Looking for notes tagged '{tag}'.")
-        note_ids = self.collection.find_notes("")
-        notes = [self.collection.get_note(id) for id in note_ids]
-        self.notes = [note for note in notes if tag in note.tags]
-        print(f"Found {len(self.notes)} notes")
-
-        questions: list[Question] = []
-        for note in self.notes:
-            code, output, _, context = note.fields
-            language = "go" if context.startswith("Go") else "python"
-            code = self.pre_process(code)
-            code = self.html_to_plain(code)
-            output = self.html_to_plain(output)
-            check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
-            check_format = Tag.NO_CHECK_FORMATTING.value not in note.tags
-            id = note.id
-            questions.append(Question(str(id), language, code, output, check_output, check_format))
-        self.questions = questions
-
-    def html_to_plain(self, html: str) -> str:
-        """
-        Replace html tags or entity names with text equivalents.
-
-        Anki note fields are html.
-        Code output notes' output field should have minimal markup.
-        Replace this markup with text equivalents, e.g. <br> -> \\n.
-        """
-        # quotation mark and apostrophe are html reserved characters
-        # but in my notes we use " and ' seemingly without issue, not &quot; or &apos;
-        # so we don't need to replace those
-        # also, some &nbsp; linger, so just clean them ad hoc here
-        # TODO: think about where these cleaning methods live
-        return html.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ").replace("&amp;", "&")
-
-    def escape_html(self, plain: str) -> str:
-        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-    def pre_process(self, code: str) -> str:
-        return (
-            code.removeprefix('<pre><code class="lang-python">').removeprefix('<pre><code class="lang-go">').removesuffix("</code></pre>")
-        )
-
-    def post_process(self, code: str, question: Question) -> str:
-        return f'<pre><code class="lang-{question.language}">{code}</code></pre>'
+        self.repository = repository
+        self.questions = repository.get(tag)
 
     def fix_output(self, question: Question) -> None:
-        "Write the normalised, marked up output of the given question's snippet to the anki database."
-
-        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        output = question.snippet.output
-        note_output = self.escape_html(output.normalised)
-        note.fields[1] = note_output
-        self.collection.update_note(note)
+        self.repository.fix_output(question)
         self.fixed.append(question)
 
     def fix_formatting(self, question: Question) -> None:
-        "Write a formatted version of the given question's snippet to the anki database."
-        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
-        assert formatted is not None  # we only fix if no error when formatting
-        formatted = self.escape_html(formatted)
-        formatted = self.post_process(formatted, question)
-        note.fields[0] = formatted
-        self.collection.update_note(note)
+        self.repository.fix_formatting(question)
         self.fixed.append(question)
 
     def no_check_formatting(self, question: Question) -> None:
-        """
-        Add a tag to the given question's note, indicating this note should be ignored
-        when checking formatting, and write it to the anki database.
-        """
-        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        note.tags.append(Tag.NO_CHECK_FORMATTING.value)
-        self.collection.update_note(note)
+        self.repository.add_tag(question, Tag.NO_CHECK_FORMATTING)
         self.ignored.append(question)
 
     def no_check_output(self, question: Question) -> None:
-        """
-        Add a tag to the given question's note, indicating this note should be ignored
-        when checking outputs, and write it to the anki database.
-        """
-        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        note.tags.append(Tag.NO_CHECK_OUTPUT.value)
-        self.collection.update_note(note)
+        self.repository.add_tag(question, Tag.NO_CHECK_OUTPUT)
         self.ignored.append(question)
 
     def check_output(self, interactive: bool) -> None:
@@ -204,7 +101,7 @@ class AnkiQuestions:
 
 
 def check_output(args) -> int:
-    questions = AnkiQuestions(tag=args.tag)
+    questions = Questions(tag=args.tag, repository=AnkiRepository())
     questions.check_output(args.interactive)
     if questions.failed:
         print(
@@ -222,7 +119,7 @@ def check_output(args) -> int:
 
 
 def check_formatting(args) -> int:
-    questions = AnkiQuestions(tag=args.tag)
+    questions = Questions(tag=args.tag, repository=AnkiRepository())
     questions.check_formatting(args.interactive)
     if questions.failed:
         print(
