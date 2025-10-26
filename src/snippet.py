@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
-import time
 from abc import ABC, abstractmethod
 from functools import cached_property
 from pathlib import Path
@@ -34,23 +33,16 @@ class Snippet(ABC):
 class PythonSnippet(Snippet):
     "A Python code snippet."
 
+    # FIXME: deal with exceptions
     @cached_property
     def output(self) -> PythonOutput:
-        container = self.client.containers.run(
+        result = self.client.containers.run(
             "python:3.13",
-            command=["python", "-u", "-c", self.code],
-            detach=True,
+            command=["python", "-c", self.code],
+            auto_remove=True,
         )
-        logs = {}
-        start = time.perf_counter()
-        for line in container.logs(stream=True):  # blocks until \n
-            now = time.perf_counter()
-            delta = now - start
-            logs[delta] = line
 
-        container.remove()
-
-        return PythonOutput.from_logs(logs)
+        return PythonOutput(result.decode("utf-8"))
 
     def format(self, compressed: bool = False) -> str | None:
         called_process = subprocess.run(
@@ -77,32 +69,15 @@ class GoSnippet(Snippet):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with open(Path(tmpdirname) / "main.go", "w") as f:
                 f.write(self.code)
-            # `go run` takes a while, producing a spurious <~2s> at start of the output
-            # so `go build` first, blocking until done, then execute
-            self.client.containers.run(
+            result = self.client.containers.run(
                 "golang:1.25",
-                command=["go", "build", "main.go"],
+                command=["go", "run", "main.go"],
                 volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
                 working_dir="/mnt/vol1",
-            )
-            container = self.client.containers.run(
-                "golang:1.25",
-                command=["./main"],
-                volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
-                working_dir="/mnt/vol1",
-                detach=True,
+                auto_remove=True,
             )
 
-        logs = {}
-        start = time.perf_counter()
-        for line in container.logs(stream=True):  # blocks until \n
-            now = time.perf_counter()
-            delta = now - start
-            logs[delta] = line
-
-        container.remove()
-
-        return GoOutput.from_logs(logs)
+            return GoOutput(result.decode("utf-8"))
 
     def format(self, compressed: bool = False) -> str | None:
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -114,6 +89,7 @@ class GoSnippet(Snippet):
                     command=["go", "fmt", "main.go"],
                     volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
                     working_dir="/mnt/vol1",
+                    auto_remove=True,
                 )
             except docker.errors.ContainerError:
                 formatted = None

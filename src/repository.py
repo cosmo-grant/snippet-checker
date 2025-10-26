@@ -144,7 +144,7 @@ class AnkiRepository(Repository):
         return html.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ").replace("&amp;", "&")
 
     def escape_html(self, plain: str) -> str:
-        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")  # FIXME: \n -> <br> in output, or pre-code output
 
     def pre_process(self, code: str) -> str:
         return (

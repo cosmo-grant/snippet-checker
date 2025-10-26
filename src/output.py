@@ -12,29 +12,6 @@ class Output(ABC):
         self.raw = output
         self.normalised = self.normalise(output)
 
-    @classmethod
-    @abstractmethod
-    def from_logs(cls: type[LanguageOutput], logs: dict[float, bytes]) -> LanguageOutput:
-        "Alternative constructor, creating an output from timed docker logs."
-
-        rounded_logs: dict[int, str] = {}
-        # insertion order should be ascending t, but let's be clear and cautious
-        for t in sorted(logs):
-            rounded_t = round(t)
-            line = logs[t].decode("utf-8")
-            rounded_logs[rounded_t] = rounded_logs.get(rounded_t, "") + line
-
-        output = ""
-        previous = 0
-        for t, line in rounded_logs.items():
-            delta = t - previous
-            output += f"<~{delta}s>\n"
-            output += line
-            previous = t
-        output = output.removeprefix("<~0s>\n")
-
-        return cls(output)
-
     @abstractmethod
     def normalise(self, output: str) -> str:
         raise NotImplementedError
@@ -52,10 +29,6 @@ class PythonOutput(Output):
 
     def __init__(self, output: str) -> None:
         super().__init__(output)
-
-    @classmethod
-    def from_logs(cls, logs: dict[float, bytes]) -> PythonOutput:
-        return super().from_logs(logs)
 
     def normalise(self, output: str) -> str:
         output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
@@ -105,10 +78,6 @@ class GoOutput(Output):
 
     def __init__(self, output: str) -> None:
         super().__init__(output)
-
-    @classmethod
-    def from_logs(cls, logs: dict[float, bytes]) -> GoOutput:
-        return super().from_logs(logs)
 
     def normalise_memory_addresses(self, output: str) -> str:
         seen = set()
