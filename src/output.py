@@ -31,10 +31,11 @@ class PythonOutput(Output):
         super().__init__(output)
 
     def normalise(self, output: str) -> str:
-        output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
         output = self.normalise_memory_addresses(output)
         output = self.normalise_traceback(output)
         output = self.normalise_location_info(output)
+        output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
+
         return output
 
     def normalise_memory_addresses(self, output: str) -> str:
