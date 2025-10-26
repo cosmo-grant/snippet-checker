@@ -114,6 +114,7 @@ class AnkiRepository(Repository):
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         note_output = self.escape_html(question.snippet.output.normalised)
+        note_output = note_output.replace("\n", "<br>")  # TODO: better to use pre tags probably
         note.fields[1] = note_output
         self.collection.update_note(note)
 
@@ -144,7 +145,7 @@ class AnkiRepository(Repository):
         return html.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ").replace("&amp;", "&")
 
     def escape_html(self, plain: str) -> str:
-        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")  # FIXME: \n -> <br> in output, or pre-code output
+        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def pre_process(self, code: str) -> str:
         return (
