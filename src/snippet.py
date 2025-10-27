@@ -33,16 +33,23 @@ class Snippet(ABC):
 class PythonSnippet(Snippet):
     "A Python code snippet."
 
-    # FIXME: deal with exceptions
     @cached_property
     def output(self) -> PythonOutput:
-        result = self.client.containers.run(
+        container = self.client.containers.run(
             "python:3.13",
             command=["python", "-c", self.code],
-            auto_remove=True,
+            detach=True,
         )
 
-        return PythonOutput(result.decode("utf-8"))
+        container.wait()
+
+        stdout = container.logs(stderr=False)
+        stderr = container.logs(stdout=False)
+        logs = stdout + stderr  # see #15
+
+        container.remove()
+
+        return PythonOutput(logs.decode("utf-8"))
 
     def format(self, compressed: bool = False) -> str | None:
         called_process = subprocess.run(
@@ -69,15 +76,23 @@ class GoSnippet(Snippet):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with open(Path(tmpdirname) / "main.go", "w") as f:
                 f.write(self.code)
-            result = self.client.containers.run(
+            container = self.client.containers.run(
                 "golang:1.25",
                 command=["go", "run", "main.go"],
                 volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
                 working_dir="/mnt/vol1",
-                auto_remove=True,
+                detach=True,
             )
 
-            return GoOutput(result.decode("utf-8"))
+            container.wait()
+
+        stdout = container.logs(stderr=False)
+        stderr = container.logs(stdout=False)
+        logs = stdout + stderr  # see #15
+
+        container.remove()
+
+        return GoOutput(logs.decode("utf-8"))
 
     def format(self, compressed: bool = False) -> str | None:
         with tempfile.TemporaryDirectory() as tmpdirname:
