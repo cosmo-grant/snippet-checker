@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -165,11 +166,8 @@ def escape_html(plain: str) -> str:
 
 def markdown_code(code: str) -> str:
     "Process an anki code field, which is html, returning source code."
-    code = (
-        code.removeprefix('<pre><code class="lang-python">')
-        .removeprefix('<pre><code class="lang-go">')
-        .removesuffix("</code></pre>")  # TODO: support arbitrary languages
-    )
+    code = re.sub(r'<pre><code class="lang-\w+">', "", code)
+    code = code.removesuffix("</code></pre>")
     code = unescape_html(code)
     return code
 
