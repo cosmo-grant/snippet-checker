@@ -34,7 +34,6 @@ class PythonOutput(Output):
         output = self.normalise_memory_addresses(output)
         output = self.normalise_traceback(output)
         output = self.normalise_location_info(output)
-        output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
 
         return output
 
@@ -96,7 +95,6 @@ class GoOutput(Output):
         output = self.normalise_memory_addresses(output)
         output = self.normalise_panic(output)
         output = self.normalise_stack_overflow(output)
-        output = output.rstrip("\n")  # TODO: do we want this? it looks nicer in anki notes, but the output may actually end in a newline
 
         return output
 

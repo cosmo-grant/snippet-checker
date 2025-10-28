@@ -98,10 +98,9 @@ class AnkiRepository(Repository):
         questions: list[Question] = []
         for note in self.notes:
             code, output, _, context = note.fields
-            language = "go" if context.startswith("Go") else "python"
-            code = self.pre_process(code)
-            code = self.html_to_plain(code)
-            output = self.html_to_plain(output)
+            language = "go" if context.startswith("Go") else "python"  # TODO:
+            code = markdown_code(code)
+            output = markdown_output(output)
             check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
             check_format = Tag.NO_CHECK_FORMATTING.value not in note.tags
             id = note.id
@@ -113,9 +112,8 @@ class AnkiRepository(Repository):
         "Write the normalised, marked up output of the given question's snippet to the anki database."
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        note_output = self.escape_html(question.snippet.output.normalised)
-        note_output = note_output.replace("\n", "<br>")  # TODO: better to use pre tags probably
-        note.fields[1] = note_output
+        output = markup_output(question.snippet.output.normalised)
+        note.fields[1] = output
         self.collection.update_note(note)
 
     def fix_formatting(self, question) -> None:
@@ -124,39 +122,72 @@ class AnkiRepository(Repository):
         formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
         assert formatted is not None  # we only fix if no error when formatting
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        formatted = self.escape_html(formatted)
-        formatted = self.post_process(formatted, question.language)
+        formatted = markup_code(formatted, question.language)
         note.fields[0] = formatted
         self.collection.update_note(note)
-
-    def html_to_plain(self, html: str) -> str:
-        """
-        Replace html tags or entity names with text equivalents.
-
-        Anki note fields are html.
-        Code output notes' output field should have minimal markup.
-        Replace this markup with text equivalents, e.g. <br> -> \\n.
-        """
-        # quotation mark and apostrophe are html reserved characters
-        # but in my notes we use " and ' seemingly without issue, not &quot; or &apos;
-        # so we don't need to replace those
-        # also, some &nbsp; linger, so just clean them ad hoc here
-        # TODO: think about where these cleaning methods live
-        return html.replace("<br>", "\n").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ").replace("&amp;", "&")
-
-    def escape_html(self, plain: str) -> str:
-        return plain.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-    def pre_process(self, code: str) -> str:
-        return (
-            code.removeprefix('<pre><code class="lang-python">').removeprefix('<pre><code class="lang-go">').removesuffix("</code></pre>")
-        )
-
-    def post_process(self, code: str, language: str) -> str:
-        return f'<pre><code class="lang-{language}">{code}</code></pre>'
 
     def add_tag(self, question: Question, tag: Tag) -> None:
         "Write a tag to the given question indicating special treatment, e.g. don't check output."
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
         note.tags.append(tag.value)
         self.collection.update_note(note)
+
+
+def unescape_html(html: str) -> str:
+    """
+    Replace html tags or entity names with text equivalents.
+
+    Anki treats note fields as html, so some characters in the notes are escaped or replaced by html tags.
+    Unescape them here, replacing them with their text equivalents, e.g. &lt; becomes <.
+
+    Some of these escapes probably don't occur in the notes, but it does no harm to include them in case.
+    """
+    return (
+        html.replace("<br>", "\n")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&apos;", "'")
+        .replace("&quot;", '"')
+    )
+
+
+def escape_html(plain: str) -> str:
+    """
+    Anki treats note fields as html, so we need to escape some characters.
+
+    I follow the mdn docs rule of thumb: escape &, then <; anything else is optional.
+    Note that I escape less than I unescape: liberal in what you accept, conservative in what you emit.
+    """
+    return plain.replace("&", "&amp;").replace("<", "&lt;")
+
+
+def markdown_code(code: str) -> str:
+    "Process an anki code field, which is html, returning source code."
+    code = (
+        code.removeprefix('<pre><code class="lang-python">')
+        .removeprefix('<pre><code class="lang-go">')
+        .removesuffix("</code></pre>")  # TODO: support arbitrary languages
+    )
+    code = unescape_html(code)
+    return code
+
+
+def markup_code(code: str, language: str) -> str:
+    "Process source code into an anki code field, which is html."
+    code = escape_html(code)
+    return f'<pre><code class="lang-{language}">{code}</code></pre>'
+
+
+def markdown_output(output: str) -> str:
+    "Process an anki output field, which is html, returning plaintext."
+    output = output.removeprefix("<pre><samp>").removesuffix("</samp></pre>")
+    output = unescape_html(output)
+    return output
+
+
+def markup_output(output: str) -> str:
+    "Process code output into an anki output field, which is html."
+    output = escape_html(output)
+    return f"<pre><samp>{output}</samp></pre>"
