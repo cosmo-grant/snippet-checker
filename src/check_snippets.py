@@ -1,21 +1,30 @@
 import sys
 from argparse import ArgumentParser
+from enum import Enum
 from pathlib import Path
-from typing import Literal
 
 from question import Question, Tag
 from repository import AnkiRepository, DirectoryRepository, Repository
 
 
-def get_user_input() -> Literal["REPLACE", "IGNORE", "MOVE ON"]:
+class UserInput(Enum):
+    REPLACE = "REPLACE"
+    IGNORE = "IGNORE"
+    MOVE_ON = "MOVE ON"
+    REVIEW = "REVIEW"
+
+
+def get_user_input() -> UserInput:
     print()
-    response = input("Enter 'r' to replace, 'i' to ignore in future, anything else to move on: ")
+    response = input("Enter 'r' to replace, 'i' to ignore in future, 'v' to tag for review and move on, anything else to just move on: ")
     if response == "r":
-        return "REPLACE"
+        return UserInput("REPLACE")
     elif response == "i":
-        return "IGNORE"
+        return UserInput("IGNORE")
+    elif response == "v":
+        return UserInput("REVIEW")
     else:
-        return "MOVE ON"
+        return UserInput("MOVE ON")
 
 
 def check_output(repository: Repository, interactive: bool) -> int:
@@ -41,14 +50,17 @@ def check_output(repository: Repository, interactive: bool) -> int:
             failed.append(question)
             if interactive:
                 response = get_user_input()
-                if response == "REPLACE":
+                if response == UserInput.REPLACE:
                     repository.fix_output(question)
                     fixed.append(question)
                     print("\N{SPARKLES} Replaced.")
-                elif response == "IGNORE":
+                elif response == UserInput.IGNORE:
                     repository.add_tag(question, Tag.NO_CHECK_OUTPUT)
                     ignored.append(question)
                     print("\N{SEE-NO-EVIL MONKEY} Will ignore in future.")
+                elif response == UserInput.REVIEW:
+                    repository.add_tag(question, Tag.REVIEW)
+                    print("\N{RIGHT-POINTING MAGNIFYING GLASS} Added 'review' tag.")
                 else:
                     print("\N{FACE WITHOUT MOUTH} Moving on.")
             print("----------")
@@ -106,6 +118,9 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
                     repository.add_tag(question, Tag.NO_CHECK_FORMATTING)
                     ignored.append(question)
                     print("\N{SEE-NO-EVIL MONKEY} Will ignore in future.")
+                elif response == UserInput.REVIEW:
+                    repository.add_tag(question, Tag.REVIEW)
+                    print("\N{RIGHT-POINTING MAGNIFYING GLASS} Added 'review' tag.")
                 else:
                     print("\N{FACE WITHOUT MOUTH} Moving on.")
             print("----------")

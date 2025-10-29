@@ -10,6 +10,7 @@ class Tag(Enum):
 
     NO_CHECK_FORMATTING = "no_check_formatting"
     NO_CHECK_OUTPUT = "no_check_output"
+    REVIEW = "review"
 
 
 class Question:
