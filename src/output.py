@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
+from itertools import count
 from typing import TypeVar
 
 LanguageOutput = TypeVar("LanguageOutput", bound="Output")
@@ -38,6 +39,7 @@ class PythonOutput(Output):
         return output
 
     def normalise_memory_addresses(self, output: str) -> str:
+        addresses = (hex(i) for i in count(0x100, 0x100))  # nice-looking, easily distinguished fake memory addresses
         seen = set()
         normalised = output
         for match in re.finditer(self.memory_address, output):
@@ -45,7 +47,7 @@ class PythonOutput(Output):
             if address in seen:
                 continue
             seen.add(address)
-            normalised = normalised.replace(address, f"0x{len(seen)}")
+            normalised = normalised.replace(address, next(addresses))
 
         return normalised
 
@@ -80,6 +82,7 @@ class GoOutput(Output):
         super().__init__(output)
 
     def normalise_memory_addresses(self, output: str) -> str:
+        addresses = (hex(i) for i in count(0x100, 0x100))  # nice-looking, easily distinguished fake memory addresses
         seen = set()
         normalised = output
         for match in re.finditer(self.memory_address, output):
@@ -87,7 +90,7 @@ class GoOutput(Output):
             if address in seen:
                 continue
             seen.add(address)
-            normalised = normalised.replace(address, f"0x{len(seen)}")
+            normalised = normalised.replace(address, next(addresses))
 
         return normalised
 
