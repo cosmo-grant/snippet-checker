@@ -45,8 +45,8 @@ def check_output(repository: Repository, interactive: bool) -> int:
             colour_print(question.snippet.code, colour="cyan", end="\n\n")
             print("Output (normalised):")
             colour_print(question.snippet.output.normalised, colour="green", end="\n\n")
-            print("Given (normalised):")
-            colour_print(question.output.normalised, colour="red")
+            print("Given:")
+            colour_print(question.output.raw, colour="red")
             failed.append(question)
             if interactive:
                 response = get_user_input()
