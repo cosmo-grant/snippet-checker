@@ -31,4 +31,4 @@ class Question:
         self.check_formatting = check_formatting
 
     def has_ok_output(self) -> bool:
-        return self.snippet.output.normalised == self.output.normalised
+        return self.snippet.output.normalised == self.output.raw

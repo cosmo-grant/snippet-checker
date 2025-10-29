@@ -84,7 +84,7 @@ questions
 ## What if my question fails the check?
 
 When checking outputs, the checker runs the question's snippet, gets the docker logs, represents those logs as a string (call that the _docker output_), and normalises the string.
-It compares the normalised docker output with the normalised given output.
+It compares the normalised docker output with the given output.
 If these are different, it complains.
 
 When checking formatting, the checker runs the question's snippet through a formatter, perhaps does some further formatting of its own, and compares the result to what it started with.
