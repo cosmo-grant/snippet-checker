@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import subprocess
 import tempfile
 from abc import ABC, abstractmethod
@@ -15,9 +14,9 @@ from output import GoOutput, Output, PythonOutput
 class Snippet(ABC):
     """Abstract base class for code snippets in some language."""
 
+    client = docker.from_env(environment={"DOCKER_HOST": f"unix://{Path.home()}/.docker/run/docker.sock"})
+
     def __init__(self, code: str):
-        os.environ["DOCKER_HOST"] = f"unix://{Path.home()}/.docker/run/docker.sock"
-        self.client = docker.from_env()
         self.code = code
 
     @cached_property
