@@ -60,8 +60,6 @@ class DirectoryRepository(Repository):
                 check_formatting = Tag.NO_CHECK_FORMATTING.value in tags
             questions.append(Question(question_dir, language, code, output, check_output, check_formatting))
 
-        print(f"Found {len(questions)} questions.")
-
         return questions
 
     def fix_output(self, question: Question) -> None:
@@ -94,7 +92,6 @@ class AnkiRepository(Repository):
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
         self.notes = [note for note in notes if self.tag in note.tags]
-        print(f"Found {len(self.notes)} notes.")
 
         questions: list[Question] = []
         for note in self.notes:

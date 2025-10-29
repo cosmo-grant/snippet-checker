@@ -24,6 +24,9 @@ def check_output(repository: Repository, interactive: bool) -> int:
     ignored: list[Question] = []
     questions = repository.get()
     questions_to_check = [question for question in questions if question.check_output]
+
+    print(f"Found {len(questions)} questions.")
+    print(f"Will check {len(questions_to_check)}.")
     print("----------")
 
     for question in questions_to_check:
@@ -71,6 +74,9 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
     ignored: list[Question] = []
     questions = repository.get()
     questions_to_check = [question for question in questions if question.check_formatting]
+
+    print(f"Found {len(questions)} questions.")
+    print(f"Will check {len(questions_to_check)}.")
     print("----------")
 
     for question in questions_to_check:
