@@ -1,4 +1,5 @@
 from __future__ import annotations
+from time import sleep, perf_counter
 
 import subprocess
 import tempfile
@@ -8,7 +9,7 @@ from pathlib import Path
 
 import docker
 
-from output import GoOutput, Output, PythonOutput
+from .output import GoOutput, Output, PythonOutput
 
 
 class Snippet(ABC):
@@ -34,21 +35,30 @@ class PythonSnippet(Snippet):
 
     @cached_property
     def output(self) -> PythonOutput:
-        container = self.client.containers.run(
-            "python:3.13",
-            command=["python", "-c", self.code],
-            detach=True,
-        )
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmpdir = Path(tmpdirname)
+            with open(tmpdir / "snippet.py", "w") as f:
+                f.write(self.code)
+            container = self.client.containers.run(
+                "python:3.13",
+                command=["sh", "-c", "python snippet.py >log 2>&1"],
+                volumes={tmpdir: {"bind": "/target", "mode": "rw"}},
+                working_dir="/target",
+                detach=True,
+            )
 
-        container.wait()
-
-        stdout = container.logs(stderr=False)
-        stderr = container.logs(stdout=False)
-        logs = stdout + stderr  # see #15
+            output = {}
+            with open(tmpdir / "log", buffering=1) as f:
+                start = perf_counter()
+                while container.status != "exited":
+                    output[perf_counter() - start] = f.read()
+                    sleep(0.1)
+                    container.reload()
+                output[perf_counter() - start] = f.read()
 
         container.remove()
 
-        return PythonOutput(logs.decode("utf-8"))
+        return PythonOutput.from_logs(output)
 
     def format(self, compressed: bool = False) -> str | None:
         called_process = subprocess.run(
