@@ -4,7 +4,7 @@ from pathlib import Path
 
 from anki.storage import Collection
 
-from .question import Question, Tag
+from question import Question, Tag
 
 
 class Repository(ABC):

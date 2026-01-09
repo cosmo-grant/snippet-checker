@@ -17,30 +17,6 @@ class Output(ABC):
     def normalise(self, output: str) -> str:
         raise NotImplementedError
 
-    @classmethod
-    def from_logs(cls: type[LanguageOutput], logs: dict[float, bytes]) -> LanguageOutput:
-        "Alternative constructor, creating an output from timed reads of an output file."
-
-        rounded_logs: dict[int, str] = {}
-        # insertion order should be ascending t, but let's be clear and cautious
-        for t in sorted(logs):
-            rounded_t = round(t)
-            chunk = logs[t]
-            rounded_logs[rounded_t] = rounded_logs.get(rounded_t, "") + chunk
-
-        rounded_logs = {k: v for k, v in rounded_logs.items() if v}
-
-
-        output = ""
-        previous = 0
-        for t, chunk in rounded_logs.items():
-            delta = t - previous
-            output += f"<~{delta}s>\n"
-            output += chunk
-            previous = t
-        output = output.removeprefix("<~0s>\n")
-
-        return cls(output)
 
 class PythonOutput(Output):
     "A representation of a Python snippet's output."

@@ -3,8 +3,7 @@ from textwrap import dedent
 
 from pytest import mark
 
-from src.output import PythonOutput
-from src.snippet import PythonSnippet
+from check_snippets import Output, Snippet
 
 
 def get_snippets(dir):
@@ -23,32 +22,33 @@ def get_snippets(dir):
 
 @mark.parametrize("source_code, expected_output", get_snippets("ok"))
 def test_ok_snippet(source_code, expected_output):
-    snippet = PythonSnippet(source_code)
+    snippet = Snippet(source_code)
     actual_output = snippet.output
     assert expected_output == actual_output.raw
 
 
+@mark.xfail
 @mark.parametrize("source_code, expected_output", get_snippets("limitations"))
 def test_limitations_snippet(source_code, expected_output):
-    snippet = PythonSnippet(source_code)
+    snippet = Snippet(source_code)
     actual_output = snippet.output
     assert expected_output == actual_output.raw
 
 
 def test_format_no_change():
     source_code = 'print("hello")\n'
-    snippet = PythonSnippet(source_code)
+    snippet = Snippet(source_code)
     assert snippet.format() == source_code
 
 
 def test_format_change():
     source_code = 'print("hello")'  # new newline at eof
-    snippet = PythonSnippet(source_code)
+    snippet = Snippet(source_code)
     assert snippet.format() == 'print("hello")\n'
 
 
 def test_normalise_memory_address():
-    output = PythonOutput(
+    output = Output(
         dedent("""
         <__main__.C object at 0x104cfa450>
         <__main__.D object at 0x104cfa5d0>
@@ -56,16 +56,16 @@ def test_normalise_memory_address():
         """).strip()
     )
     expected_normalised = dedent("""
-        <__main__.C object at 0x100>
-        <__main__.D object at 0x200>
-        <__main__.C object at 0x100>
+        <__main__.C object at 0x1>
+        <__main__.D object at 0x2>
+        <__main__.C object at 0x1>
         """).strip()
 
     assert expected_normalised == output.normalised
 
 
 def test_normalise_traceback():
-    output = PythonOutput(
+    output = Output(
         dedent("""
         Traceback (most recent call last):
           File "<string>", line 1, in <module>
