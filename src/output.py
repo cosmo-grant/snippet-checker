@@ -17,6 +17,22 @@ class Output(ABC):
     def normalise(self, output: str) -> str:
         raise NotImplementedError
 
+    @classmethod
+    def from_logs(cls: type[LanguageOutput], logs: list[tuple[float, bytes]]) -> LanguageOutput:
+        "Alternative constructor, creating an output from timed docker logs."
+
+        output = ""
+        for delta, char in logs:
+            rounded_delta = round(delta)
+            if rounded_delta == 0:
+                output += char.decode("utf-8")
+            else:
+                output += f"<~{rounded_delta}s>\n"
+                output += char.decode("utf-8")
+
+        output = output.replace("\r\n", "\n")
+        return cls(output)
+
 
 class PythonOutput(Output):
     "A representation of a Python snippet's output."
