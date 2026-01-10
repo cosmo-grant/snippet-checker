@@ -3,8 +3,8 @@ from textwrap import dedent
 
 from pytest import mark
 
-from src.output import PythonOutput
-from src.snippet import PythonSnippet
+from output import PythonOutput
+from snippet import PythonSnippet
 
 
 def get_snippets(dir):

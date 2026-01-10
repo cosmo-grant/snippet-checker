@@ -9,7 +9,7 @@ from pathlib import Path
 
 import docker
 
-from .output import GoOutput, Output, PythonOutput
+from output import GoOutput, Output, PythonOutput
 
 
 class Snippet(ABC):
