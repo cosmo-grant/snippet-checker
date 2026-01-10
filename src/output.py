@@ -21,17 +21,18 @@ class Output(ABC):
     def from_logs(cls: type[LanguageOutput], logs: list[tuple[float, bytes]]) -> LanguageOutput:
         "Alternative constructor, creating an output from timed docker logs."
 
-        output = ""
+        output = b""
         for delta, char in logs:
             rounded_delta = round(delta)
             if rounded_delta == 0:
-                output += char.decode("utf-8")
+                output += char
             else:
-                output += f"<~{rounded_delta}s>\n"
-                output += char.decode("utf-8")
+                output += bytes(f"<~{rounded_delta}s>\n", "utf-8")
+                output += char
 
-        output = output.replace("\r\n", "\n")
-        return cls(output)
+        decoded_output = output.decode("utf-8")
+        decoded_output = decoded_output.replace("\r\n", "\n")
+        return cls(decoded_output)
 
 
 class PythonOutput(Output):
