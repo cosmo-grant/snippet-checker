@@ -110,11 +110,11 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
             failed.append(question)
             if interactive:
                 response = get_user_input()
-                if response == "REPLACE":
+                if response == UserInput.REPLACE:
                     repository.fix_formatting(question)
                     fixed.append(question)
                     print("\N{SPARKLES} Replaced.")
-                elif response == "IGNORE":
+                elif response == UserInput.IGNORE:
                     repository.add_tag(question, Tag.NO_CHECK_FORMATTING)
                     ignored.append(question)
                     print("\N{SEE-NO-EVIL MONKEY} Will ignore in future.")
