@@ -64,7 +64,7 @@ class PythonSnippet(Snippet):
         if called_process.returncode == 0:
             formatted = called_process.stdout
             if compressed:
-                formatted = formatted.strip().replace("\n\n\n", "\n\n")
+                formatted = formatted.strip().replace("\n\n\n", "\n\n")  # crude
         else:
             formatted = None
 
