@@ -40,7 +40,10 @@ class PythonSnippet(Snippet):
             container = self.client.containers.run(
                 "python:3.13",
                 command=["python", "-c", self.code],
-                environment={"NO_COLOR": "true"},  # any non-empty string will do; prevents ansi sequences
+                environment={
+                    "NO_COLOR": "true",  # any non-empty string will do; prevents ansi sequences
+                    "PYTHONWARNINGS": "ignore",
+                },
                 detach=True,  # needed to get timing; cannot auto_remove in consequence
                 tty=True,
             )
