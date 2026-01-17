@@ -23,7 +23,7 @@ def get_snippets(dir):
 
 @mark.parametrize("source_code, expected_output", get_snippets("ok"))
 def test_ok_snippet(source_code, expected_output):
-    snippet = PythonSnippet(source_code)
+    snippet = PythonSnippet(source_code, "python:3.13")
     actual_output = snippet.output
     assert expected_output == actual_output.normalised
 
@@ -31,20 +31,20 @@ def test_ok_snippet(source_code, expected_output):
 @mark.xfail
 @mark.parametrize("source_code, expected_output", get_snippets("limitations"))
 def test_limitations_snippet(source_code, expected_output):
-    snippet = PythonSnippet(source_code)
+    snippet = PythonSnippet(source_code, "python:3.13")
     actual_output = snippet.output
     assert expected_output == actual_output.raw
 
 
 def test_format_no_change():
     source_code = 'print("hello")\n'
-    snippet = PythonSnippet(source_code)
+    snippet = PythonSnippet(source_code, "python:3.13")
     assert snippet.format() == source_code
 
 
 def test_format_change():
     source_code = 'print("hello")'  # new newline at eof
-    snippet = PythonSnippet(source_code)
+    snippet = PythonSnippet(source_code, "python:3.13")
     assert snippet.format() == 'print("hello")\n'
 
 

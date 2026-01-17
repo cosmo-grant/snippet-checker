@@ -97,12 +97,15 @@ class AnkiRepository(Repository):
         for note in self.notes:
             code, output, _, context = note.fields
             language = "go" if context.startswith("Go") else "python"  # TODO:
+            image_tag = next((tag for tag in note.tags if tag.startswith("image:")), None)
+            assert image_tag is not None, f"Note {note.id} has no 'image:<name>' tag."
+            image = image_tag.removeprefix("image:")
             code = markdown_code(code)
             output = markdown_output(output)
             check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
             check_format = Tag.NO_CHECK_FORMATTING.value not in note.tags
             id = note.id
-            questions.append(Question(id, language, code, output, check_output, check_format))
+            questions.append(Question(id, language, code, image, output, check_output, check_format))
 
         return questions
 

@@ -17,8 +17,9 @@ class Snippet(ABC):
 
     client = docker.from_env(environment={"DOCKER_HOST": f"unix://{Path.home()}/.docker/run/docker.sock"})
 
-    def __init__(self, code: str):
+    def __init__(self, code: str, image: str):
         self.code = code
+        self.image = image
 
     @cached_property
     @abstractmethod
@@ -38,7 +39,7 @@ class PythonSnippet(Snippet):
         logs: list[tuple[float, bytes]] = []
         try:
             container = self.client.containers.run(
-                "python:3.13",
+                image=self.image,
                 command=["python", "-c", self.code],
                 environment={
                     "NO_COLOR": "true",  # any non-empty string will do; prevents ansi sequences
@@ -85,7 +86,7 @@ class GoSnippet(Snippet):
             # `go run` takes a while, producing a spurious <~2s> at start of the output
             # so `go build` first, blocking until done, then execute
             self.client.containers.run(
-                "golang:1.25",
+                image=self.image,
                 command=["go", "build", "main.go"],
                 volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
                 working_dir="/mnt/vol1",
@@ -93,7 +94,7 @@ class GoSnippet(Snippet):
             )
             try:
                 container = self.client.containers.run(
-                    "golang:1.25",
+                    image=self.image,
                     command=["./main"],
                     volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
                     working_dir="/mnt/vol1",

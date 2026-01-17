@@ -14,16 +14,17 @@ class Tag(Enum):
 
 
 class Question:
-    def __init__(self, id: int | Path, language: str, code: str, expected_output: str, check_output: bool, check_formatting: bool):
+    def __init__(self, id: int | Path, language: str, code: str, image: str, expected_output: str, check_output: bool, check_formatting: bool):
         self.id = id
         self.language = language
+        self.image = image
         self.snippet: Snippet
         self.output: Output
         if language == "go":
-            self.snippet = GoSnippet(code)
+            self.snippet = GoSnippet(code, image)
             self.output = GoOutput(expected_output)
         elif language == "python":
-            self.snippet = PythonSnippet(code)
+            self.snippet = PythonSnippet(code, image)
             self.output = PythonOutput(expected_output)
         else:
             raise ValueError(f"Unsupported language: {language}")
