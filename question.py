@@ -14,20 +14,19 @@ class Tag(Enum):
 
 
 class Question:
-    def __init__(self, id: int | Path, language: str, code: str, image: str, expected_output: str, check_output: bool, check_formatting: bool):
+    def __init__(self, id: int | Path, code: str, image: str, expected_output: str, check_output: bool, check_formatting: bool):
         self.id = id
-        self.language = language
         self.image = image
         self.snippet: Snippet
         self.output: Output
-        if language == "go":
+        if image.startswith("golang"):
             self.snippet = GoSnippet(code, image)
             self.output = GoOutput(expected_output)
-        elif language == "python":
+        elif image.startswith("python") or image.startswith("numpy"):
             self.snippet = PythonSnippet(code, image)
             self.output = PythonOutput(expected_output)
         else:
-            raise ValueError(f"Unsupported language: {language}")
+            raise ValueError(f"Cannot tell language from tag 'image:{image}'")
         self.check_output = check_output
         self.check_formatting = check_formatting
 

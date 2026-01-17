@@ -26,14 +26,14 @@ class Repository(ABC):
 
 
 class DirectoryRepository(Repository):
-    EXTENSIONS = {
-        ".py": "python",
-        ".go": "go",
-    }
-
     @classmethod
-    def extension_from_language(cls, language: str) -> str:  # TODO: enum instead?
-        return next(ext for ext, lang in cls.EXTENSIONS.items() if lang == language)
+    def extension_from_image(cls, image: str) -> str:
+        if image.startswith("python") or image.startswith("numpy"):
+            return ".py"
+        elif image.startswith("golang"):
+            return ".go"
+        else:
+            raise Exception(f"Extension for image '{image}' not known")
 
     def __init__(self, dir: Path):
         self.dir = dir
@@ -44,21 +44,18 @@ class DirectoryRepository(Repository):
         questions: list[Question] = []
         for question_dir in self.dir.iterdir():
             snippet_path = next(question_dir.glob("snippet.*"))
-            language = self.EXTENSIONS[snippet_path.suffix]
             with open(snippet_path) as f:
                 code = f.read()
             with open(question_dir / "output.txt") as f:
                 output = f.read()
-            try:
-                with open(question_dir / "tags.txt") as f:
-                    tags = {line.strip() for line in f}
-            except FileNotFoundError:
-                check_output = True
-                check_formatting = True
-            else:
-                check_output = Tag.NO_CHECK_OUTPUT.value in tags
-                check_formatting = Tag.NO_CHECK_FORMATTING.value in tags
-            questions.append(Question(question_dir, language, code, output, check_output, check_formatting))
+            with open(question_dir / "tags.txt") as f:
+                tags = {line.strip() for line in f}
+                check_output = Tag.NO_CHECK_OUTPUT.value not in tags
+                check_formatting = Tag.NO_CHECK_FORMATTING.value not in tags
+                image_tag = next((tag for tag in tags if tag.startswith("image:")), None)
+            assert image_tag is not None, f"Directory {question_dir} has no 'image:<name>' tag."
+            image = image_tag.removeprefix("image:")
+            questions.append(Question(question_dir, code, image, output, check_output, check_formatting))
 
         return questions
 
@@ -73,7 +70,7 @@ class DirectoryRepository(Repository):
         assert isinstance(question.id, Path)
         formatted = question.snippet.format()
         assert formatted is not None  # we only fix if no error when formatting
-        extension = self.extension_from_language(question.language)
+        extension = self.extension_from_image(question.image)
         with open(question.id / f"snippet{extension}", "w") as f:
             f.write(formatted)
 
@@ -96,7 +93,6 @@ class AnkiRepository(Repository):
         questions: list[Question] = []
         for note in self.notes:
             code, output, _, context = note.fields
-            language = "go" if context.startswith("Go") else "python"  # TODO:
             image_tag = next((tag for tag in note.tags if tag.startswith("image:")), None)
             assert image_tag is not None, f"Note {note.id} has no 'image:<name>' tag."
             image = image_tag.removeprefix("image:")
@@ -105,7 +101,7 @@ class AnkiRepository(Repository):
             check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
             check_format = Tag.NO_CHECK_FORMATTING.value not in note.tags
             id = note.id
-            questions.append(Question(id, language, code, image, output, check_output, check_format))
+            questions.append(Question(id, code, image, output, check_output, check_format))
 
         return questions
 
