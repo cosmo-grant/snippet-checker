@@ -93,9 +93,9 @@ class AnkiRepository(Repository):
         questions: list[Question] = []
         for note in self.notes:
             code, output, _, context = note.fields
-            image_tag = next((tag for tag in note.tags if tag.startswith("image:")), None)
-            assert image_tag is not None, f"Note {note.id} has no 'image:<name>' tag."
-            image = image_tag.removeprefix("image:")
+            image_tags = len(tag for tag in note.tags if tag.startswith("image:"))
+            assert len(image_tags) == 1, f"Note {note.id} has {len(image_tags)} image tags. Expected exactly 1."
+            image = image_tags[0].removeprefix("image:")
             code = markdown_code(code)
             output = markdown_output(output)
             check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
