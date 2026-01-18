@@ -1,4 +1,5 @@
 import re
+import tomllib
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -37,24 +38,33 @@ class DirectoryRepository(Repository):
 
     def __init__(self, dir: Path):
         self.dir = dir
+        try:
+            with open(dir / "tags.toml", "rb") as f:
+                self.dir_tags = tomllib.load(f)
+        except FileNotFoundError:
+            self.dir_tags = {}
 
     def get(self) -> list[Question]:
         print(f"Looking for questions in directory '{self.dir}'.")
 
         questions: list[Question] = []
-        for question_dir in self.dir.iterdir():
+        for question_dir in (item for item in self.dir.iterdir() if item.is_dir()):
             snippet_path = next(question_dir.glob("snippet.*"))
             with open(snippet_path) as f:
                 code = f.read()
             with open(question_dir / "output.txt") as f:
                 output = f.read()
-            with open(question_dir / "tags.txt") as f:
-                tags = {line.strip() for line in f}
-                check_output = Tag.NO_CHECK_OUTPUT.value not in tags
-                check_formatting = Tag.NO_CHECK_FORMATTING.value not in tags
-                image_tag = next((tag for tag in tags if tag.startswith("image:")), None)
-            assert image_tag is not None, f"Directory {question_dir} has no 'image:<name>' tag."
-            image = image_tag.removeprefix("image:")
+
+            try:
+                with open(question_dir / "tags.toml", "rb") as f:
+                    question_tags = tomllib.load(f)
+            except FileNotFoundError:
+                question_tags = {}
+            tags = self.dir_tags | question_tags
+            check_output = not tags.get(Tag.NO_CHECK_OUTPUT.value, False)  # TODO: simplify
+            check_formatting = not tags.get(Tag.NO_CHECK_FORMATTING.value, False)
+            image = tags["image"]
+
             questions.append(Question(question_dir, code, image, output, check_output, check_formatting))
 
         return questions
@@ -93,7 +103,7 @@ class AnkiRepository(Repository):
         questions: list[Question] = []
         for note in self.notes:
             code, output, _, context = note.fields
-            image_tags = len(tag for tag in note.tags if tag.startswith("image:"))
+            image_tags = list(tag for tag in note.tags if tag.startswith("image:"))
             assert len(image_tags) == 1, f"Note {note.id} has {len(image_tags)} image tags. Expected exactly 1."
             image = image_tags[0].removeprefix("image:")
             code = markdown_code(code)
