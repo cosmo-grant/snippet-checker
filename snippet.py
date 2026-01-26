@@ -60,7 +60,7 @@ class PythonSnippet(Snippet):
 
     def format(self, compressed: bool = False) -> str | None:
         called_process = subprocess.run(
-            ["ruff", "format", "-"],
+            ["ruff", "format", "-"],  # TODO: should be able to control config
             input=self.code,
             capture_output=True,
             text=True,

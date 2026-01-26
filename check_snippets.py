@@ -170,7 +170,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    # how to tell if the target is meant to be taken as a directory or an anki tag?
+    # TODO: how to tell if the target is meant to be taken as a directory or an anki tag?
     # i take a simple, risky approach: take it as a directory if a same-named directory exists, else an anki tag
     maybe_dir = Path(args.target)
     repository = DirectoryRepository(maybe_dir) if maybe_dir.is_dir() else AnkiRepository(args.target)

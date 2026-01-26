@@ -90,7 +90,7 @@ class DirectoryRepository(Repository):
 
 class AnkiRepository(Repository):
     def __init__(self, tag: str):
-        path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
+        path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"  # TODO:
         self.collection = Collection(str(path))
         self.tag = tag
 
