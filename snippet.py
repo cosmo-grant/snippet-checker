@@ -36,25 +36,30 @@ class PythonSnippet(Snippet):
 
     @cached_property
     def output(self) -> PythonOutput:
-        logs: list[tuple[float, bytes]] = []
-        try:
-            container = self.client.containers.run(
-                image=self.image,
-                command=["python", "-c", self.code],
-                environment={
-                    "NO_COLOR": "true",  # any non-empty string will do; prevents ansi sequences
-                    "PYTHONWARNINGS": "ignore",
-                },
-                detach=True,  # needed to get timing; cannot auto_remove in consequence
-                tty=True,
-            )
-            previous = time.perf_counter()
-            for char in container.logs(stream=True):
-                now = time.perf_counter()
-                logs.append((now - previous, char))
-                previous = now
-        finally:
-            container.remove()
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with open(Path(tmpdirname) / "snippet.py", "w") as f:
+                f.write(self.code)
+            try:
+                container = self.client.containers.run(
+                    image=self.image,
+                    command=["python", "./snippet.py"],
+                    volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "ro"}},
+                    working_dir="/mnt/vol1",
+                    environment={
+                        "NO_COLOR": "true",  # any non-empty string will do; prevents ansi sequences
+                        "PYTHONWARNINGS": "ignore",
+                    },
+                    detach=True,  # needed to get timing; cannot auto_remove in consequence
+                    tty=True,
+                )
+                logs: list[tuple[float, bytes]] = []
+                previous = time.perf_counter()
+                for char in container.logs(stream=True):
+                    now = time.perf_counter()
+                    logs.append((now - previous, char))
+                    previous = now
+            finally:
+                container.remove()
 
         return PythonOutput.from_logs(logs)
 
