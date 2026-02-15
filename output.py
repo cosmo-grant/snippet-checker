@@ -69,7 +69,7 @@ class PythonOutput(Output):
         return normalised
 
     def normalise_traceback(self, output: str) -> str:
-        normalised = re.sub(self.traceback_except_for_last_line, "", output)
+        normalised = re.sub(self.traceback_except_for_last_line, "Traceback (most recent call last):\n  ...\n", output)
 
         return normalised
 

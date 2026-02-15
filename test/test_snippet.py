@@ -76,6 +76,8 @@ def test_normalise_traceback():
         """).strip()
     )
     expected_normalised = dedent("""
+        Traceback (most recent call last):
+          ...
         ZeroDivisionError: division by zero
         """).strip()
 

@@ -1,4 +1,5 @@
-hello
+Exception in thread Thread-1 (bad):
 Traceback (most recent call last):
   ...
 Exception
+here
