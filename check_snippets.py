@@ -5,6 +5,7 @@ from pathlib import Path
 
 from question import Question, Tag
 from repository import AnkiRepository, DirectoryRepository, Repository
+from snippet import Snippet
 
 
 class UserInput(Enum):
@@ -174,7 +175,10 @@ def main() -> int:
     # i take a simple, risky approach: take it as a directory if a same-named directory exists, else an anki tag
     maybe_dir = Path(args.target)
     repository = DirectoryRepository(maybe_dir) if maybe_dir.is_dir() else AnkiRepository(args.target)
-    exit_code = args.func(repository, args.interactive)
+    try:
+        exit_code = args.func(repository, args.interactive)
+    finally:
+        Snippet.cleanup()
     return exit_code
 
 

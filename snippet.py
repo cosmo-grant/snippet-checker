@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import io
 import subprocess
-import tempfile
+import tarfile
 import time
 from abc import ABC, abstractmethod
 from functools import cached_property
 from pathlib import Path
+from typing import ClassVar
 
 import docker
 
@@ -15,7 +17,37 @@ from output import GoOutput, Output, PythonOutput
 class Snippet(ABC):
     """Abstract base class for code snippets in some language."""
 
-    client = docker.from_env(environment={"DOCKER_HOST": f"unix://{Path.home()}/.docker/run/docker.sock"})
+    client = docker.from_env()
+    _container_pool: ClassVar[dict[str, docker.models.containers.Container]] = {}
+
+    @classmethod
+    def _copy_to_container(
+        cls,
+        container: docker.models.containers.Container,
+        content: str,
+        dest: Path,
+    ) -> None:
+        """
+        Copy a string as a file into a container.
+        Overwrites any existing file at the destination.
+        """
+        data = io.BytesIO()
+        with tarfile.open(fileobj=data, mode="w") as tar:
+            file_bytes = content.encode("utf-8")
+            tarinfo = tarfile.TarInfo(name=dest.name)
+            tarinfo.size = len(file_bytes)
+            tar.addfile(tarinfo, io.BytesIO(file_bytes))
+        data.seek(0)
+
+        succeeded = container.put_archive(str(dest.parent), data)
+        assert succeeded
+
+    @classmethod
+    def cleanup(cls) -> None:
+        """Remove all containers in the pool."""
+        for container in cls._container_pool.values():
+            container.remove(force=True)
+        cls._container_pool.clear()
 
     def __init__(self, code: str, image: str):
         self.code = code
@@ -34,32 +66,39 @@ class Snippet(ABC):
 class PythonSnippet(Snippet):
     "A Python code snippet."
 
+    @classmethod
+    def _get_container(cls, image: str) -> docker.models.containers.Container:
+        """Get or create a long-running container for the given image."""
+        if image not in cls._container_pool:
+            cls._container_pool[image] = cls.client.containers.run(
+                image,
+                ["tail", "-f", "/dev/null"],
+                detach=True,
+                environment={
+                    "NO_COLOR": "true",
+                    "PYTHONWARNINGS": "ignore",
+                },
+            )
+        return cls._container_pool[image]
+
     @cached_property
     def output(self) -> PythonOutput:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            with open(Path(tmpdirname) / "snippet.py", "w") as f:
-                f.write(self.code)
-            try:
-                container = self.client.containers.run(
-                    image=self.image,
-                    command=["python", "./snippet.py"],
-                    volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "ro"}},
-                    working_dir="/mnt/vol1",
-                    environment={
-                        "NO_COLOR": "true",  # any non-empty string will do; prevents ansi sequences
-                        "PYTHONWARNINGS": "ignore",
-                    },
-                    detach=True,  # needed to get timing; cannot auto_remove in consequence
-                    tty=True,
-                )
-                logs: list[tuple[float, bytes]] = []
-                previous = time.perf_counter()
-                for char in container.logs(stream=True):
-                    now = time.perf_counter()
-                    logs.append((now - previous, char))
-                    previous = now
-            finally:
-                container.remove()
+        container = self._get_container(self.image)
+        self._copy_to_container(container, self.code, Path("/tmp/snippet.py"))
+
+        logs: list[tuple[float, bytes]] = []
+        previous = time.perf_counter()
+
+        _, output_stream = container.exec_run(
+            ["python", "/tmp/snippet.py"],
+            tty=True,
+            stream=True,
+        )
+
+        for chunk in output_stream:
+            now = time.perf_counter()
+            logs.append((now - previous, chunk))
+            previous = now
 
         return PythonOutput.from_logs(logs)
 
@@ -83,57 +122,45 @@ class PythonSnippet(Snippet):
 class GoSnippet(Snippet):
     "A Go code snippet."
 
+    @classmethod
+    def _get_container(cls, image: str) -> docker.models.containers.Container:
+        """Get or create a long-running container for the given image."""
+        if image not in cls._container_pool:
+            cls._container_pool[image] = cls.client.containers.run(
+                image,
+                ["tail", "-f", "/dev/null"],
+                detach=True,
+            )
+        return cls._container_pool[image]
+
     @cached_property
     def output(self) -> GoOutput:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            with open(Path(tmpdirname) / "main.go", "w") as f:
-                f.write(self.code)
-            # `go run` takes a while, producing a spurious <~2s> at start of the output
-            # so `go build` first, blocking until done, then execute
-            self.client.containers.run(
-                image=self.image,
-                command=["go", "build", "main.go"],
-                volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
-                working_dir="/mnt/vol1",
-                auto_remove=True,
-            )
-            try:
-                container = self.client.containers.run(
-                    image=self.image,
-                    command=["./main"],
-                    volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
-                    working_dir="/mnt/vol1",
-                    detach=True,
-                )
+        container = self._get_container(self.image)
+        self._copy_to_container(container, self.code, Path("/tmp/main.go"))
 
-                logs: list[tuple[float, bytes]] = []
-                previous = time.perf_counter()
-                for char in container.logs(stream=True):
-                    now = time.perf_counter()
-                    logs.append((now - previous, char))
-                    previous = now
-            finally:
-                container.remove()
+        exit_code, _ = container.exec_run(["go", "build", "/tmp/main.go"], workdir="/tmp")
+        assert exit_code == 0
+
+        logs: list[tuple[float, bytes]] = []
+        previous = time.perf_counter()
+        _, output_stream = container.exec_run(["/tmp/main"], tty=True, stream=True)
+        for chunk in output_stream:
+            now = time.perf_counter()
+            logs.append((now - previous, chunk))
+            previous = now
 
         return GoOutput.from_logs(logs)
 
     def format(self, compressed: bool = False) -> str | None:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            with open(Path(tmpdirname) / "main.go", "w") as f:
-                f.write(self.code)
-            try:
-                self.client.containers.run(
-                    "golang:1.25",
-                    command=["go", "fmt", "main.go"],
-                    volumes={tmpdirname: {"bind": "/mnt/vol1", "mode": "rw"}},
-                    working_dir="/mnt/vol1",
-                )
-            except docker.errors.ContainerError:
-                formatted = None
-            else:
-                with open(Path(tmpdirname) / "main.go") as f:
-                    formatted = f.read()
-                if compressed:
-                    formatted = formatted.strip().replace("\n\n\n", "\n\n")
+        container = self._get_container(self.image)
+        self._copy_to_container(container, self.code, Path("/tmp/main.go"))
+        exit_code, _ = container.exec_run(["go", "fmt", "/tmp/main.go"])
+        if exit_code != 0:
+            formatted = None
+        else:
+            _, output = container.exec_run(["cat", "/tmp/main.go"])
+            formatted = output.decode("utf-8")
+            if compressed:
+                formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
         return formatted
