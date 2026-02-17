@@ -9,6 +9,9 @@ dependencies = [
     "docker>=7.1.0",
 ]
 
+[project.scripts]
+snippet-checker = "snippet_checker.cli:app"
+
 [dependency-groups]
 dev = [
     "ipython>=9.6.0",
@@ -40,3 +43,7 @@ select = [
     # isort
     "I",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
