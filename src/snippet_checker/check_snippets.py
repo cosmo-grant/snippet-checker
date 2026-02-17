@@ -3,9 +3,9 @@ from argparse import ArgumentParser
 from enum import Enum
 from pathlib import Path
 
-from question import Question, Tag
-from repository import AnkiRepository, DirectoryRepository, Repository
-from snippet import Snippet
+from .question import Question, Tag
+from .repository import AnkiRepository, DirectoryRepository, Repository
+from .snippet import Snippet
 
 
 class UserInput(Enum):

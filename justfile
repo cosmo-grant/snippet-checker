@@ -1,4 +1,4 @@
 checks:
-  uv run ruff check --fix
-  uv run ruff format
-  uv run mypy .
+  uv run ruff check --fix src
+  uv run ruff format src
+  uv run mypy src

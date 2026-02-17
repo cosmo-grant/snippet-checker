@@ -1,8 +1,8 @@
 from enum import Enum
 from pathlib import Path
 
-from output import GoOutput, Output, PythonOutput
-from snippet import GoSnippet, PythonSnippet, Snippet
+from .output import GoOutput, Output, PythonOutput
+from .snippet import GoSnippet, PythonSnippet, Snippet
 
 
 class Tag(Enum):
