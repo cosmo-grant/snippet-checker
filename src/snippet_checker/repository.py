@@ -90,13 +90,13 @@ class DirectoryRepository(Repository):
 
 
 class AnkiRepository(Repository):
-    def __init__(self, tag: str):
+    def __init__(self, profile: str, tag: str):
         system = platform.system()
         # TODO: pass profile via cli arg or config?
         if system == "Linux":
-            path = Path.home() / ".local/share/Anki2/cosmo/collection.anki2"
+            path = Path.home() / f".local/share/Anki2/{profile}/collection.anki2"
         else:  # mac
-            path = Path.home() / "Library/Application Support/Anki2/cosmo/collection.anki2"
+            path = Path.home() / f"Library/Application Support/Anki2/{profile}/collection.anki2"
 
         self.collection = Collection(str(path))
         self.tag = tag

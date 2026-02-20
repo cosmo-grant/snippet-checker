@@ -7,6 +7,7 @@ from .snippet import Snippet
 
 parser = ArgumentParser()
 parser.add_argument("target", help="directory or anki tag of the questions you want to check")
+parser.add_argument("--anki-profile", "-p", help="name of anki profile to use, if relevant")
 subparsers = parser.add_subparsers(required=True)
 
 check_output_parser = subparsers.add_parser("check-output", help="check snippet output")
@@ -24,11 +25,7 @@ check_formatting_parser.set_defaults(func=check_formatting)
 
 def app() -> None:
     args = parser.parse_args()
-
-    # TODO: how to tell if the target is meant to be taken as a directory or an anki tag?
-    # i take a simple, risky approach: take it as a directory if a same-named directory exists, else an anki tag
-    maybe_dir = Path(args.target)
-    repository = DirectoryRepository(maybe_dir) if maybe_dir.is_dir() else AnkiRepository(args.target)
+    repository = AnkiRepository(args.anki_profile, args.target) if args.anki_profile is not None else DirectoryRepository(Path(args.target))
 
     try:
         args.func(repository, args.interactive)
