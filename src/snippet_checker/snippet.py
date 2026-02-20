@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import platform
 import subprocess
 import tarfile
 import time
@@ -17,7 +18,11 @@ from .output import GoOutput, Output, PythonOutput
 class Snippet(ABC):
     """Abstract base class for code snippets in some language."""
 
-    client = docker.from_env()
+    client = (
+        docker.from_env()
+        if platform.system() == "Linux"
+        else docker.from_env(environment={"DOCKER_HOST": f"unix://{Path.home()}/.docker/run/docker.sock"})
+    )
     _container_pool: ClassVar[dict[str, docker.models.containers.Container]] = {}
 
     @classmethod
