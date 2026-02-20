@@ -41,32 +41,37 @@ class DirectoryRepository(Repository):
         self.dir = dir
         try:
             with open(dir / "tags.toml", "rb") as f:
-                self.dir_tags = tomllib.load(f)
+                self.root_tags = tomllib.load(f)
         except FileNotFoundError:
-            self.dir_tags = {}
+            self.root_tags = {}
 
     def get(self) -> list[Question]:
         print(f"Looking for questions in directory '{self.dir}'.")
 
         questions: list[Question] = []
-        for question_dir in (item for item in self.dir.iterdir() if item.is_dir()):
-            snippet_path = next(question_dir.glob("snippet.*"))
+        for dirpath, _, _ in self.dir.walk():
+            snippet_paths = list(dirpath.glob("snippet.*")) + list(dirpath.glob("main.*"))
+            if len(snippet_paths) == 0:
+                continue
+            elif len(snippet_paths) > 1:
+                raise Exception(f"{dirpath} has multiple snippets")
+            (snippet_path,) = snippet_paths
             with open(snippet_path) as f:
                 code = f.read()
-            with open(question_dir / "output.txt") as f:
+            with open(dirpath / "output.txt") as f:
                 output = f.read()
-
             try:
-                with open(question_dir / "tags.toml", "rb") as f:
+                with open(dirpath / "tags.toml", "rb") as f:
                     question_tags = tomllib.load(f)
             except FileNotFoundError:
                 question_tags = {}
-            tags = self.dir_tags | question_tags
+            tags = self.root_tags | question_tags
+
             check_output = not tags.get(Tag.NO_CHECK_OUTPUT.value, False)  # TODO: simplify
             check_formatting = not tags.get(Tag.NO_CHECK_FORMATTING.value, False)
             image = tags["image"]
 
-            questions.append(Question(question_dir, code, image, output, check_output, check_formatting))
+            questions.append(Question(dirpath, code, image, output, check_output, check_formatting))
 
         return questions
 
