@@ -12,7 +12,7 @@ from typing import ClassVar
 
 import docker
 
-from .output import GoOutput, Output, PythonOutput
+from .output import GoOutput, NodeOutput, Output, PythonOutput, RubyOutput, RustOutput
 
 
 class Snippet(ABC):
@@ -153,6 +153,120 @@ class GoSnippet(Snippet):
             formatted = None
         else:
             _, output = container.exec_run(["cat", "/tmp/main.go"])
+            formatted = output.decode("utf-8")
+            if compressed:
+                formatted = formatted.strip().replace("\n\n\n", "\n\n")
+
+        return formatted
+
+
+class NodeSnippet(Snippet):
+    "A Node code snippet."
+
+    @cached_property
+    def output(self) -> NodeOutput:
+        container = self._get_container(self.image)
+        self._copy_to_container(container, self.code, Path("/tmp/main.js"))
+
+        logs: list[tuple[float, bytes]] = []
+        previous = time.perf_counter()
+
+        _, output_stream = container.exec_run(
+            ["node", "/tmp/main.js"],
+            tty=True,
+            stream=True,
+            environment={"NO_COLOR": 1},
+        )
+
+        for chunk in output_stream:
+            now = time.perf_counter()
+            logs.append((now - previous, chunk))
+            previous = now
+
+        return NodeOutput.from_logs(logs)
+
+    def format(self, compressed: bool = False) -> str | None:
+        container = self._get_container(self.image)
+        self._copy_to_container(container, self.code, Path("/tmp/main.js"))
+        exit_code, _ = container.exec_run(["echo", "not implemented"])  # FIXME:
+        if exit_code != 0:
+            formatted = None
+        else:
+            _, output = container.exec_run(["cat", "/tmp/main.js"])
+            formatted = output.decode("utf-8")
+            if compressed:
+                formatted = formatted.strip().replace("\n\n\n", "\n\n")
+
+        return formatted
+
+
+class RubySnippet(Snippet):
+    "A Ruby code snippet."
+
+    @cached_property
+    def output(self) -> RubyOutput:
+        container = self._get_container(self.image)
+        self._copy_to_container(container, self.code, Path("/tmp/main.rb"))
+
+        logs: list[tuple[float, bytes]] = []
+        previous = time.perf_counter()
+
+        _, output_stream = container.exec_run(["ruby", "/tmp/main.rb"], tty=True, stream=True)
+
+        for chunk in output_stream:
+            now = time.perf_counter()
+            logs.append((now - previous, chunk))
+            previous = now
+
+        return RubyOutput.from_logs(logs)
+
+    def format(self, compressed: bool = False) -> str | None:
+        container = self._get_container(self.image)
+        self._copy_to_container(container, self.code, Path("/tmp/main.rb"))
+        exit_code, _ = container.exec_run(["echo", "not implemented"])  # FIXME:
+        if exit_code != 0:
+            formatted = None
+        else:
+            _, output = container.exec_run(["cat", "/tmp/main.rb"])
+            formatted = output.decode("utf-8")
+            if compressed:
+                formatted = formatted.strip().replace("\n\n\n", "\n\n")
+
+        return formatted
+
+
+class RustSnippet(Snippet):
+    "A Rust code snippet."
+
+    @cached_property
+    def output(self) -> RustOutput:
+        # TODO: copy cargo.toml too?
+        container = self._get_container(self.image)
+        container.exec_run(["rm", "-rf", "/tmp/*"])
+        exit_code, _ = container.exec_run(["cargo", "init", "--name", "main", "--vcs", "none"], workdir="/tmp")
+        assert exit_code == 0
+        self._copy_to_container(container, self.code, Path("/tmp/src/main.rs"))
+        exit_code, _ = container.exec_run(["cargo", "build"], workdir="/tmp")
+        assert exit_code == 0
+
+        logs: list[tuple[float, bytes]] = []
+        previous = time.perf_counter()
+        _, output_stream = container.exec_run(["target/debug/main"], tty=True, stream=True, workdir="/tmp")
+        for chunk in output_stream:
+            now = time.perf_counter()
+            logs.append((now - previous, chunk))
+            previous = now
+
+        return RustOutput.from_logs(logs)
+
+    def format(self, compressed: bool = False) -> str | None:
+        container = self._get_container(self.image)
+        self._copy_to_container(container, self.code, Path("/tmp/main.rs"))
+        exit_code, _ = container.exec_run(["cargo", "fmt"], workdir="/tmp")
+        if exit_code != 0:
+            formatted = None
+        else:
+            _, output = container.exec_run(["cat", "/tmp/main.rs"])
             formatted = output.decode("utf-8")
             if compressed:
                 formatted = formatted.strip().replace("\n\n\n", "\n\n")

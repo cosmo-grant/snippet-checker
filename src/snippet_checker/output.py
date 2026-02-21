@@ -125,3 +125,33 @@ class GoOutput(Output):
     def normalise_stack_overflow(self, output: str) -> str:
         normalised = re.sub(self.stack_overflow, r"\1", output)
         return normalised
+
+
+class NodeOutput(Output):
+    "A representation of a Node snippet's output."
+
+    def __init__(self, output: str) -> None:
+        super().__init__(output)
+
+    def normalise(self, output: str) -> str:
+        return output  # TODO:
+
+
+class RubyOutput(Output):
+    "A representation of a Ruby snippet's output."
+
+    def __init__(self, output: str) -> None:
+        super().__init__(output)
+
+    def normalise(self, output: str) -> str:
+        return output  # TODO:
+
+
+class RustOutput(Output):
+    "A representation of a Rust snippet's output."
+
+    def __init__(self, output: str) -> None:
+        super().__init__(output)
+
+    def normalise(self, output: str) -> str:
+        return output  # TODO:
