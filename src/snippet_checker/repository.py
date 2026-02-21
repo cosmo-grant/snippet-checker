@@ -49,8 +49,16 @@ class DirectoryRepository(Repository):
             (snippet_path,) = snippet_paths
             with open(snippet_path) as f:
                 code = f.read()
-            with open(dirpath / "output.txt") as f:
-                output = f.read()
+
+            output_path = dirpath / "output.txt"
+            try:
+                with open(output_path) as f:
+                    output = f.read()
+            except FileNotFoundError:
+                # create empty, so we can in effect write, not only check, the output
+                output_path.touch()
+                output = ""
+
             try:
                 with open(dirpath / "snippet_checker.toml", "rb") as f:
                     question_config = tomllib.load(f)
