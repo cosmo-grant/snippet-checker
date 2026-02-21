@@ -26,6 +26,17 @@ class Snippet(ABC):
     _container_pool: ClassVar[dict[str, docker.models.containers.Container]] = {}
 
     @classmethod
+    def _get_container(cls, image: str) -> docker.models.containers.Container:
+        """Get or create a long-running container for the given image."""
+        if image not in cls._container_pool:
+            cls._container_pool[image] = cls.client.containers.run(
+                image,
+                ["tail", "-f", "/dev/null"],
+                detach=True,
+            )
+        return cls._container_pool[image]
+
+    @classmethod
     def _copy_to_container(
         cls,
         container: docker.models.containers.Container,
@@ -71,21 +82,6 @@ class Snippet(ABC):
 class PythonSnippet(Snippet):
     "A Python code snippet."
 
-    @classmethod
-    def _get_container(cls, image: str) -> docker.models.containers.Container:
-        """Get or create a long-running container for the given image."""
-        if image not in cls._container_pool:
-            cls._container_pool[image] = cls.client.containers.run(
-                image,
-                ["tail", "-f", "/dev/null"],
-                detach=True,
-                environment={
-                    "NO_COLOR": "true",
-                    "PYTHONWARNINGS": "ignore",
-                },
-            )
-        return cls._container_pool[image]
-
     @cached_property
     def output(self) -> PythonOutput:
         container = self._get_container(self.image)
@@ -98,6 +94,10 @@ class PythonSnippet(Snippet):
             ["python", "/tmp/snippet.py"],
             tty=True,
             stream=True,
+            environment={
+                "NO_COLOR": "true",
+                "PYTHONWARNINGS": "ignore",
+            },
         )
 
         for chunk in output_stream:
@@ -126,17 +126,6 @@ class PythonSnippet(Snippet):
 
 class GoSnippet(Snippet):
     "A Go code snippet."
-
-    @classmethod
-    def _get_container(cls, image: str) -> docker.models.containers.Container:
-        """Get or create a long-running container for the given image."""
-        if image not in cls._container_pool:
-            cls._container_pool[image] = cls.client.containers.run(
-                image,
-                ["tail", "-f", "/dev/null"],
-                detach=True,
-            )
-        return cls._container_pool[image]
 
     @cached_property
     def output(self) -> GoOutput:
