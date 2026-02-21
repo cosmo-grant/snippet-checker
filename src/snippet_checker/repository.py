@@ -31,10 +31,10 @@ class DirectoryRepository(Repository):
     def __init__(self, dir: Path):
         self.dir = dir
         try:
-            with open(dir / "tags.toml", "rb") as f:
-                self.root_tags = tomllib.load(f)
+            with open(dir / "snippet_checker.toml", "rb") as f:
+                self.root_config = tomllib.load(f)
         except FileNotFoundError:
-            self.root_tags = {}
+            self.root_config = {}
 
     def get(self) -> list[Question]:
         print(f"Looking for questions in directory '{self.dir}'.")
@@ -52,15 +52,15 @@ class DirectoryRepository(Repository):
             with open(dirpath / "output.txt") as f:
                 output = f.read()
             try:
-                with open(dirpath / "tags.toml", "rb") as f:
-                    question_tags = tomllib.load(f)
+                with open(dirpath / "snippet_checker.toml", "rb") as f:
+                    question_config = tomllib.load(f)
             except FileNotFoundError:
-                question_tags = {}
-            tags = self.root_tags | question_tags
+                question_config = {}
+            config = self.root_config | question_config
 
-            check_output = not tags.get(Tag.NO_CHECK_OUTPUT.value, False)  # TODO: simplify
-            check_formatting = not tags.get(Tag.NO_CHECK_FORMATTING.value, False)
-            image = tags["image"]
+            check_output = not config.get(Tag.NO_CHECK_OUTPUT.value, False)  # TODO: simplify
+            check_formatting = not config.get(Tag.NO_CHECK_FORMATTING.value, False)
+            image = config[snippet_path.suffix.removeprefix(".")]
 
             questions.append(Question(snippet_path, code, image, output, check_output, check_formatting))
 
