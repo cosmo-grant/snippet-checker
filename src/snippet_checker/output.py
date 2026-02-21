@@ -9,8 +9,9 @@ LanguageOutput = TypeVar("LanguageOutput", bound="Output")
 
 
 class Output(ABC):
-    def __init__(self, output: str) -> None:
+    def __init__(self, output: str, traceback_verbosity: int) -> None:
         self.raw = output
+        self.traceback_verbosity = traceback_verbosity
         self.normalised = self.normalise(output)
 
     @abstractmethod
@@ -18,7 +19,7 @@ class Output(ABC):
         raise NotImplementedError
 
     @classmethod
-    def from_logs(cls: type[LanguageOutput], logs: list[tuple[float, bytes]]) -> LanguageOutput:
+    def from_logs(cls: type[LanguageOutput], logs: list[tuple[float, bytes]], traceback_verbosity: int) -> LanguageOutput:
         "Alternative constructor, creating an output from timed docker logs."
 
         output = b""
@@ -32,7 +33,7 @@ class Output(ABC):
 
         decoded_output = output.decode("utf-8")
         decoded_output = decoded_output.replace("\r\n", "\n")
-        return cls(decoded_output)
+        return cls(decoded_output, traceback_verbosity)
 
 
 class PythonOutput(Output):
@@ -44,9 +45,6 @@ class PythonOutput(Output):
         r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
     )  # a traceback's last line doesn't start with whitespace so won't be captured
     location_info = re.compile(r'  File "<string>", line.*\n')
-
-    def __init__(self, output: str) -> None:
-        super().__init__(output)
 
     def normalise(self, output: str) -> str:
         output = self.normalise_memory_addresses(output)
@@ -69,7 +67,12 @@ class PythonOutput(Output):
         return normalised
 
     def normalise_traceback(self, output: str) -> str:
-        normalised = re.sub(self.traceback_except_for_last_line, "Traceback (most recent call last):\n  ...\n", output)
+        if self.traceback_verbosity == 0:
+            normalised = re.sub(self.traceback_except_for_last_line, "", output)
+        elif self.traceback_verbosity == 1:
+            normalised = re.sub(self.traceback_except_for_last_line, "Traceback (most recent call last):\n  ...\n", output)
+        elif self.traceback_verbosity == 2:
+            normalised = output
 
         return normalised
 
@@ -94,9 +97,6 @@ class GoOutput(Output):
         r".*",  # the rest
         re.DOTALL,
     )
-
-    def __init__(self, output: str) -> None:
-        super().__init__(output)
 
     def normalise_memory_addresses(self, output: str) -> str:
         addresses = (hex(i) for i in count(0x100, 0x100))  # nice-looking, easily distinguished fake memory addresses
@@ -130,9 +130,6 @@ class GoOutput(Output):
 class NodeOutput(Output):
     "A representation of a Node snippet's output."
 
-    def __init__(self, output: str) -> None:
-        super().__init__(output)
-
     def normalise(self, output: str) -> str:
         return output  # TODO:
 
@@ -140,18 +137,12 @@ class NodeOutput(Output):
 class RubyOutput(Output):
     "A representation of a Ruby snippet's output."
 
-    def __init__(self, output: str) -> None:
-        super().__init__(output)
-
     def normalise(self, output: str) -> str:
         return output  # TODO:
 
 
 class RustOutput(Output):
     "A representation of a Rust snippet's output."
-
-    def __init__(self, output: str) -> None:
-        super().__init__(output)
 
     def normalise(self, output: str) -> str:
         return output  # TODO:

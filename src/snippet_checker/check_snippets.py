@@ -1,7 +1,7 @@
 from enum import Enum
 
 from .question import Question, Tag
-from .repository import AnkiRepository, Repository
+from .repository import Repository
 
 
 class UserInput(Enum):
@@ -89,7 +89,7 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
     print("----------")
 
     for question in questions_to_check:
-        formatted = question.snippet.format(compressed=isinstance(repository, AnkiRepository))  # TODO: hack
+        formatted = question.snippet.format(compress=question.compress)
         if formatted is None:
             # error when trying to format snippet
             # treat as non-fixable failure
@@ -112,7 +112,7 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
                     fixed.append(question)
                     print("\N{SPARKLES} Replaced.")
                 elif response == UserInput.IGNORE:
-                    repository.add_tag(question, Tag.NO_CHECK_FORMATTING)
+                    repository.add_tag(question, Tag.NO_CHECK_FORMAT)
                     ignored.append(question)
                     print("\N{SEE-NO-EVIL MONKEY} Will ignore in future.")
                 elif response == UserInput.REVIEW:

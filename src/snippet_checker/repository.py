@@ -2,11 +2,35 @@ import platform
 import re
 import tomllib
 from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from anki.storage import Collection
 
 from .question import Question, Tag
+
+
+@dataclass
+class DirectoryConfig:
+    images: dict[str, str] = field(default_factory=dict)
+    check_formatting: bool = True
+    check_output: bool = True
+    traceback_verbosity: int = 1
+    compress: bool = False
+
+
+class AnkiConfig:
+    def __init__(self, tags: list[str]) -> None:
+        self.image = next(tag for tag in tags if tag.startswith("image:")).removeprefix("image:")
+        self.check_output = Tag.NO_CHECK_OUTPUT.value not in tags
+        self.check_format = Tag.NO_CHECK_FORMAT.value not in tags
+        try:
+            self.traceback_verbosity = int(
+                next(tag for tag in tags if tag.startswith("traceback_verbosity:")).removeprefix("traceback_verbosity:")
+            )
+        except StopIteration:
+            self.traceback_verbosity = 0
+        self.compress = Tag.NO_COMPRESS.value not in tags
 
 
 class Repository(ABC):
@@ -32,9 +56,9 @@ class DirectoryRepository(Repository):
         self.dir = dir
         try:
             with open(dir / "snippet_checker.toml", "rb") as f:
-                self.root_config = tomllib.load(f)
+                self.root_config = DirectoryConfig(**tomllib.load(f))
         except FileNotFoundError:
-            self.root_config = {}
+            self.root_config = DirectoryConfig()
 
     def get(self) -> list[Question]:
         print(f"Looking for questions in directory '{self.dir}'.")
@@ -64,13 +88,20 @@ class DirectoryRepository(Repository):
                     question_config = tomllib.load(f)
             except FileNotFoundError:
                 question_config = {}
-            config = self.root_config | question_config
+            config = DirectoryConfig(**(asdict(self.root_config) | question_config))
 
-            check_output = not config.get(Tag.NO_CHECK_OUTPUT.value, False)  # TODO: simplify
-            check_formatting = not config.get(Tag.NO_CHECK_FORMATTING.value, False)
-            image = config[snippet_path.suffix.removeprefix(".")]
-
-            questions.append(Question(snippet_path, code, image, output, check_output, check_formatting))
+            questions.append(
+                Question(
+                    id=snippet_path,
+                    code=code,
+                    image=config.images[snippet_path.suffix.removeprefix(".")],
+                    expected_output=output,
+                    check_output=config.check_output,
+                    check_formatting=config.check_formatting,
+                    traceback_verbosity=config.traceback_verbosity,
+                    compress=config.compress,
+                )
+            )
 
         return questions
 
@@ -83,13 +114,13 @@ class DirectoryRepository(Repository):
     def fix_formatting(self, question: Question) -> None:
         "Write a formatted version of the given question's snippet to disk, overwriting the existing snippet."
         assert isinstance(question.id, Path)
-        formatted = question.snippet.format()
+        formatted = question.snippet.format(compress=question.compress)
         assert formatted is not None  # we only fix if no error when formatting
         with open(question.id, "w") as f:
             f.write(formatted)
 
     def add_tag(self, question: Question, tag: Tag) -> None:
-        pass
+        pass  # TODO:
 
 
 class AnkiRepository(Repository):
@@ -112,16 +143,18 @@ class AnkiRepository(Repository):
 
         questions: list[Question] = []
         for note in self.notes:
+            id = note.id
             code, output, _, context = note.fields
-            image_tags = list(tag for tag in note.tags if tag.startswith("image:"))
-            assert len(image_tags) == 1, f"Note {note.id} has {len(image_tags)} image tags. Expected exactly 1."
-            image = image_tags[0].removeprefix("image:")
             code = markdown_code(code)
             output = markdown_output(output)
-            check_output = Tag.NO_CHECK_OUTPUT.value not in note.tags
-            check_format = Tag.NO_CHECK_FORMATTING.value not in note.tags
-            id = note.id
-            questions.append(Question(id, code, image, output, check_output, check_format))
+
+            tags = list(tag.removeprefix("snip:") for tag in note.tags if tag.startswith("snip:"))
+            config = AnkiConfig(tags)
+            questions.append(
+                Question(
+                    id, code, config.image, output, config.check_output, config.check_format, config.traceback_verbosity, config.compress
+                )
+            )
 
         return questions
 
@@ -136,7 +169,7 @@ class AnkiRepository(Repository):
     def fix_formatting(self, question) -> None:
         "Write a formatted version of the given question's snippet to the anki database."
         assert isinstance(question.id, int)
-        formatted = question.snippet.format(compressed=True)  # compressed looks better in anki notes
+        formatted = question.snippet.format(compress=question.compress)
         assert formatted is not None  # we only fix if no error when formatting
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         formatted = markup_code(formatted, question.language)

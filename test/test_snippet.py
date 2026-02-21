@@ -23,7 +23,7 @@ def get_snippets(dir):
 
 @mark.parametrize("source_code, expected_output", get_snippets("ok"))
 def test_ok_snippet(source_code, expected_output):
-    snippet = PythonSnippet(source_code, "python:3.13")
+    snippet = PythonSnippet(source_code, "python:3.13", traceback_verbosity=1)
     actual_output = snippet.output
     assert expected_output == actual_output.normalised
 
@@ -31,21 +31,21 @@ def test_ok_snippet(source_code, expected_output):
 @mark.xfail
 @mark.parametrize("source_code, expected_output", get_snippets("limitations"))
 def test_limitations_snippet(source_code, expected_output):
-    snippet = PythonSnippet(source_code, "python:3.13")
+    snippet = PythonSnippet(source_code, "python:3.13", traceback_verbosity=1)
     actual_output = snippet.output
     assert expected_output == actual_output.raw
 
 
 def test_format_no_change():
     source_code = 'print("hello")\n'
-    snippet = PythonSnippet(source_code, "python:3.13")
-    assert snippet.format() == source_code
+    snippet = PythonSnippet(source_code, "python:3.13", traceback_verbosity=0)
+    assert snippet.format(compress=True) == source_code
 
 
 def test_format_change():
     source_code = 'print("hello")'  # new newline at eof
-    snippet = PythonSnippet(source_code, "python:3.13")
-    assert snippet.format() == 'print("hello")\n'
+    snippet = PythonSnippet(source_code, "python:3.13", traceback_verbosity=0)
+    assert snippet.format(compress=True) == 'print("hello")\n'
 
 
 def test_normalise_memory_address():
@@ -54,13 +54,16 @@ def test_normalise_memory_address():
         <__main__.C object at 0x104cfa450>
         <__main__.D object at 0x104cfa5d0>
         <__main__.C object at 0x104cfa450>
-        """).strip()
+        """).strip(),
+        traceback_verbosity=0,
     )
-    expected_normalised = dedent("""
+    expected_normalised = (
+        dedent("""
         <__main__.C object at 0x100>
         <__main__.D object at 0x200>
         <__main__.C object at 0x100>
         """).strip()
+    )
 
     assert expected_normalised == output.normalised
 
@@ -73,7 +76,8 @@ def test_normalise_traceback():
             1 / 0
             ~~^~~
         ZeroDivisionError: division by zero
-        """).strip()
+        """).strip(),
+        traceback_verbosity=1,
     )
     expected_normalised = dedent("""
         Traceback (most recent call last):

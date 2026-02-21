@@ -14,6 +14,7 @@ snippet-checker = "snippet_checker.cli:app"
 
 [dependency-groups]
 dev = [
+    "ipdb>=0.13.13",
     "ipython>=9.6.0",
     "mypy>=1.18.2",
     "pytest>=8.4.2",

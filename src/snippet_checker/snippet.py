@@ -75,12 +75,16 @@ class Snippet(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def format(self, compressed: bool = False) -> str | None:
+    def format(self, compress: bool) -> str | None:
         raise NotImplementedError
 
 
 class PythonSnippet(Snippet):
     "A Python code snippet."
+
+    def __init__(self, code: str, image: str, traceback_verbosity: int):
+        self.traceback_verbosity = traceback_verbosity
+        super().__init__(code, image)
 
     @cached_property
     def output(self) -> PythonOutput:
@@ -105,9 +109,9 @@ class PythonSnippet(Snippet):
             logs.append((now - previous, chunk))
             previous = now
 
-        return PythonOutput.from_logs(logs)
+        return PythonOutput.from_logs(logs, self.traceback_verbosity)
 
-    def format(self, compressed: bool = False) -> str | None:
+    def format(self, compress: bool) -> str | None:
         called_process = subprocess.run(
             ["ruff", "format", "-"],  # TODO: should be able to control config
             input=self.code,
@@ -116,8 +120,8 @@ class PythonSnippet(Snippet):
         )
         if called_process.returncode == 0:
             formatted = called_process.stdout
-            if compressed:
-                formatted = formatted.strip().replace("\n\n\n", "\n\n")  # crude
+            if compress:
+                formatted = formatted.replace("\n\n\n", "\n\n")  # crude
         else:
             formatted = None
 
@@ -126,6 +130,10 @@ class PythonSnippet(Snippet):
 
 class GoSnippet(Snippet):
     "A Go code snippet."
+
+    def __init__(self, code: str, image: str, traceback_verbosity: int):
+        self.traceback_verbosity = traceback_verbosity
+        super().__init__(code, image)
 
     @cached_property
     def output(self) -> GoOutput:
@@ -143,9 +151,9 @@ class GoSnippet(Snippet):
             logs.append((now - previous, chunk))
             previous = now
 
-        return GoOutput.from_logs(logs)
+        return GoOutput.from_logs(logs, self.traceback_verbosity)
 
-    def format(self, compressed: bool = False) -> str | None:
+    def format(self, compress: bool = False) -> str | None:
         container = self._get_container(self.image)
         self._copy_to_container(container, self.code, Path("/tmp/main.go"))
         exit_code, _ = container.exec_run(["go", "fmt", "/tmp/main.go"])
@@ -154,7 +162,7 @@ class GoSnippet(Snippet):
         else:
             _, output = container.exec_run(["cat", "/tmp/main.go"])
             formatted = output.decode("utf-8")
-            if compressed:
+            if compress:
                 formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
         return formatted
@@ -162,6 +170,10 @@ class GoSnippet(Snippet):
 
 class NodeSnippet(Snippet):
     "A Node code snippet."
+
+    def __init__(self, code: str, image: str, traceback_verbosity: int):
+        self.traceback_verbosity = traceback_verbosity
+        super().__init__(code, image)
 
     @cached_property
     def output(self) -> NodeOutput:
@@ -183,9 +195,9 @@ class NodeSnippet(Snippet):
             logs.append((now - previous, chunk))
             previous = now
 
-        return NodeOutput.from_logs(logs)
+        return NodeOutput.from_logs(logs, self.traceback_verbosity)
 
-    def format(self, compressed: bool = False) -> str | None:
+    def format(self, compress: bool = False) -> str | None:
         container = self._get_container(self.image)
         self._copy_to_container(container, self.code, Path("/tmp/main.js"))
         exit_code, _ = container.exec_run(["echo", "not implemented"])  # FIXME:
@@ -194,7 +206,7 @@ class NodeSnippet(Snippet):
         else:
             _, output = container.exec_run(["cat", "/tmp/main.js"])
             formatted = output.decode("utf-8")
-            if compressed:
+            if compress:
                 formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
         return formatted
@@ -202,6 +214,10 @@ class NodeSnippet(Snippet):
 
 class RubySnippet(Snippet):
     "A Ruby code snippet."
+
+    def __init__(self, code: str, image: str, traceback_verbosity: int):
+        self.traceback_verbosity = traceback_verbosity
+        super().__init__(code, image)
 
     @cached_property
     def output(self) -> RubyOutput:
@@ -218,9 +234,9 @@ class RubySnippet(Snippet):
             logs.append((now - previous, chunk))
             previous = now
 
-        return RubyOutput.from_logs(logs)
+        return RubyOutput.from_logs(logs, self.traceback_verbosity)
 
-    def format(self, compressed: bool = False) -> str | None:
+    def format(self, compress: bool = False) -> str | None:
         container = self._get_container(self.image)
         self._copy_to_container(container, self.code, Path("/tmp/main.rb"))
         exit_code, _ = container.exec_run(["echo", "not implemented"])  # FIXME:
@@ -229,7 +245,7 @@ class RubySnippet(Snippet):
         else:
             _, output = container.exec_run(["cat", "/tmp/main.rb"])
             formatted = output.decode("utf-8")
-            if compressed:
+            if compress:
                 formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
         return formatted
@@ -237,6 +253,10 @@ class RubySnippet(Snippet):
 
 class RustSnippet(Snippet):
     "A Rust code snippet."
+
+    def __init__(self, code: str, image: str, traceback_verbosity: int):
+        self.traceback_verbosity = traceback_verbosity
+        super().__init__(code, image)
 
     @cached_property
     def output(self) -> RustOutput:
@@ -257,9 +277,9 @@ class RustSnippet(Snippet):
             logs.append((now - previous, chunk))
             previous = now
 
-        return RustOutput.from_logs(logs)
+        return RustOutput.from_logs(logs, self.traceback_verbosity)
 
-    def format(self, compressed: bool = False) -> str | None:
+    def format(self, compress: bool = False) -> str | None:
         container = self._get_container(self.image)
         self._copy_to_container(container, self.code, Path("/tmp/main.rs"))
         exit_code, _ = container.exec_run(["cargo", "fmt"], workdir="/tmp")
@@ -268,7 +288,7 @@ class RustSnippet(Snippet):
         else:
             _, output = container.exec_run(["cat", "/tmp/main.rs"])
             formatted = output.decode("utf-8")
-            if compressed:
+            if compress:
                 formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
         return formatted
