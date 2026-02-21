@@ -85,13 +85,13 @@ class PythonSnippet(Snippet):
     @cached_property
     def output(self) -> PythonOutput:
         container = self._get_container(self.image)
-        self._copy_to_container(container, self.code, Path("/tmp/snippet.py"))
+        self._copy_to_container(container, self.code, Path("/tmp/main.py"))
 
         logs: list[tuple[float, bytes]] = []
         previous = time.perf_counter()
 
         _, output_stream = container.exec_run(
-            ["python", "/tmp/snippet.py"],
+            ["python", "/tmp/main.py"],
             tty=True,
             stream=True,
             environment={
