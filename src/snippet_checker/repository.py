@@ -28,15 +28,6 @@ class Repository(ABC):
 
 
 class DirectoryRepository(Repository):
-    @classmethod
-    def extension_from_image(cls, image: str) -> str:
-        if image.startswith("python") or image.startswith("numpy"):
-            return ".py"
-        elif image.startswith("golang"):
-            return ".go"
-        else:
-            raise Exception(f"Extension for image '{image}' not known")
-
     def __init__(self, dir: Path):
         self.dir = dir
         try:
@@ -71,14 +62,14 @@ class DirectoryRepository(Repository):
             check_formatting = not tags.get(Tag.NO_CHECK_FORMATTING.value, False)
             image = tags["image"]
 
-            questions.append(Question(dirpath, code, image, output, check_output, check_formatting))
+            questions.append(Question(snippet_path, code, image, output, check_output, check_formatting))
 
         return questions
 
     def fix_output(self, question: Question) -> None:
         "Write the normalised output of the given question's snippet to disk, overwriting the existing output."
         assert isinstance(question.id, Path)
-        with open(question.id / "output.txt", "w") as f:
+        with open(question.id.parent / "output.txt", "w") as f:
             f.write(question.snippet.output.normalised)
 
     def fix_formatting(self, question: Question) -> None:
@@ -86,8 +77,7 @@ class DirectoryRepository(Repository):
         assert isinstance(question.id, Path)
         formatted = question.snippet.format()
         assert formatted is not None  # we only fix if no error when formatting
-        extension = self.extension_from_image(question.image)
-        with open(question.id / f"snippet{extension}", "w") as f:
+        with open(question.id, "w") as f:
             f.write(formatted)
 
     def add_tag(self, question: Question, tag: Tag) -> None:
