@@ -3,7 +3,7 @@ from pathlib import Path
 
 from .check_snippets import check_formatting, check_output
 from .repository import AnkiRepository, DirectoryRepository
-from .snippet import Snippet
+from .snippet import DockerExecutor
 
 parser = ArgumentParser()
 parser.add_argument("target", help="directory or anki tag of the questions you want to check")
@@ -30,7 +30,7 @@ def app() -> None:
     try:
         args.func(repository, args.interactive)
     finally:
-        Snippet.cleanup()
+        DockerExecutor.cleanup()
 
 
 if __name__ == "__main__":
