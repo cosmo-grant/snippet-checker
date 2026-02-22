@@ -95,7 +95,7 @@ class DirectoryRepository(Repository):
                     id=snippet_path,
                     code=code,
                     image=config.images[snippet_path.suffix.removeprefix(".")],
-                    expected_output=output,
+                    given_output=output,
                     check_output=config.check_output,
                     check_formatting=config.check_formatting,
                     traceback_verbosity=config.traceback_verbosity,

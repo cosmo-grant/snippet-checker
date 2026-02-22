@@ -3,13 +3,11 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import TypeVar
-
-LanguageOutput = TypeVar("LanguageOutput", bound="Output")
 
 
 class Output(ABC):
-    def __init__(self, output: str, traceback_verbosity: int) -> None:
+    def __init__(self, logs: list[tuple[float, bytes]], traceback_verbosity: int):
+        output = self._to_string(logs)
         self.raw = output
         self.traceback_verbosity = traceback_verbosity
         self.normalised = self.normalise(output)
@@ -18,10 +16,7 @@ class Output(ABC):
     def normalise(self, output: str) -> str:
         raise NotImplementedError
 
-    @classmethod
-    def from_logs(cls: type[LanguageOutput], logs: list[tuple[float, bytes]], traceback_verbosity: int) -> LanguageOutput:
-        "Alternative constructor, creating an output from timed docker logs."
-
+    def _to_string(self, logs: list[tuple[float, bytes]]) -> str:
         output = b""
         for delta, char in logs:
             rounded_delta = round(delta)
@@ -33,7 +28,8 @@ class Output(ABC):
 
         decoded_output = output.decode("utf-8")
         decoded_output = decoded_output.replace("\r\n", "\n")
-        return cls(decoded_output, traceback_verbosity)
+
+        return decoded_output
 
 
 class PythonOutput(Output):

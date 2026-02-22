@@ -121,7 +121,7 @@ class PythonSnippet(Snippet):
             },
         )
 
-        return PythonOutput.from_logs(logs, self.traceback_verbosity)
+        return PythonOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool) -> str | None:
         called_process = subprocess.run(
@@ -157,7 +157,7 @@ class GoSnippet(Snippet):
             workdir="/tmp",
         )
         logs = self.executor.exec_run_timed(self.image, ["/tmp/main"])
-        return GoOutput.from_logs(logs, self.traceback_verbosity)
+        return GoOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.go")
@@ -187,7 +187,7 @@ class NodeSnippet(Snippet):
         self.executor.write(self.image, self.code, dest)
         logs = self.executor.exec_run_timed(self.image, ["node", str(dest)], environment={"NO_COLOR": "1"})
 
-        return NodeOutput.from_logs(logs, self.traceback_verbosity)
+        return NodeOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool = False) -> str | None:
         raise NotImplementedError
@@ -206,7 +206,7 @@ class RubySnippet(Snippet):
         self.executor.write(self.image, self.code, dest)
         logs = self.executor.exec_run_timed(self.image, ["ruby", str(dest)])
 
-        return RubyOutput.from_logs(logs, self.traceback_verbosity)
+        return RubyOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool = False) -> str | None:
         raise NotImplementedError
@@ -226,7 +226,7 @@ class RustSnippet(Snippet):
         self.executor.write(self.image, self.code, Path("/tmp/src/main.rs"))
         self.executor.exec_run(self.image, ["cargo", "build"], workdir="/tmp")
         logs = self.executor.exec_run_timed(self.image, ["target/debug/main"], workdir="/tmp")
-        return RustOutput.from_logs(logs, self.traceback_verbosity)
+        return RustOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool = False) -> str | None:
         raise NotImplementedError
