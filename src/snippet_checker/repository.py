@@ -4,6 +4,7 @@ import tomllib
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any, Protocol
 
 from anki.storage import Collection
 
@@ -31,6 +32,38 @@ class AnkiConfig:
         except StopIteration:
             self.traceback_verbosity = 0
         self.compress = Tag.NO_COMPRESS.value not in tags
+
+
+class AnkiNote(Protocol):
+    """Protocol for Anki note objects. Matches the shape used by anki.notes.Note."""
+
+    @property
+    def id(self) -> Any: ...
+
+    @property
+    def fields(self) -> list[str]: ...
+
+    @property
+    def tags(self) -> list[str]: ...
+
+
+def note_to_question(note: AnkiNote) -> Question:
+    """Convert an Anki note to a Question."""
+    code, output, _, _ = note.fields
+    code = markdown_code(code)
+    output = markdown_output(output)
+    tags = [tag.removeprefix("snip:") for tag in note.tags if tag.startswith("snip:")]
+    config = AnkiConfig(tags)
+    return Question(
+        note.id,
+        code,
+        config.image,
+        output,
+        config.check_output,
+        config.check_format,
+        config.traceback_verbosity,
+        config.compress,
+    )
 
 
 class Repository(ABC):
@@ -140,23 +173,7 @@ class AnkiRepository(Repository):
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
         self.notes = [note for note in notes if self.tag in note.tags]
-
-        questions: list[Question] = []
-        for note in self.notes:
-            id = note.id
-            code, output, _, context = note.fields
-            code = markdown_code(code)
-            output = markdown_output(output)
-
-            tags = list(tag.removeprefix("snip:") for tag in note.tags if tag.startswith("snip:"))
-            config = AnkiConfig(tags)
-            questions.append(
-                Question(
-                    id, code, config.image, output, config.check_output, config.check_format, config.traceback_verbosity, config.compress
-                )
-            )
-
-        return questions
+        return [note_to_question(note) for note in self.notes]
 
     def fix_output(self, question: Question) -> None:
         "Write the normalised, marked up output of the given question's snippet to the anki database."
@@ -210,7 +227,7 @@ def escape_html(plain: str) -> str:
     I follow the mdn docs rule of thumb: escape &, then <; anything else is optional.
     Note that I escape less than I unescape: liberal in what you accept, conservative in what you emit.
     """
-    return plain.replace("&", "&amp;").replace("<", "&lt;")
+    return plain.replace("&", "&amp;").replace("<", "&lt;")  # order matters
 
 
 def markdown_code(code: str) -> str:
