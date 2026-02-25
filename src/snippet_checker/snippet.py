@@ -3,7 +3,6 @@ from __future__ import annotations
 import atexit
 import io
 import platform
-import subprocess
 import tarfile
 import time
 from abc import ABC, abstractmethod
@@ -126,18 +125,16 @@ class PythonSnippet(Snippet):
         return PythonOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool) -> str | None:
-        called_process = subprocess.run(
-            ["ruff", "format", "-"],  # TODO: should be able to control config
-            input=self.code,
-            capture_output=True,
-            text=True,
-        )
-        if called_process.returncode == 0:
-            formatted = called_process.stdout
+        dest = Path("/tmp/main.py")
+        self.executor.write(self.image, self.code, dest)
+        exit_code, foo = self.executor.exec_run(self.image, ["/bin/sh", "-c", f"python -m pip install ruff && ruff format {dest}"])
+        _, bytes_ = self.executor.exec_run(self.image, ["cat", str(dest)])
+        if exit_code != 0:
+            formatted = None
+        else:
+            formatted = bytes_.decode("utf-8")
             if compress:
                 formatted = formatted.replace("\n\n\n", "\n\n")  # crude
-        else:
-            formatted = None
 
         return formatted
 
@@ -192,7 +189,18 @@ class NodeSnippet(Snippet):
         return NodeOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool = False) -> str | None:
-        raise NotImplementedError
+        dest = Path("/tmp/main.js")
+        self.executor.write(self.image, self.code, dest)
+        exit_code, _ = self.executor.exec_run(self.image, ["/bin/sh", "-c", f"npx prettier --write {dest}"])
+        _, bytes_ = self.executor.exec_run(self.image, ["cat", str(dest)])
+        if exit_code != 0:
+            formatted = None
+        else:
+            formatted = bytes_.decode("utf-8")
+            if compress:
+                formatted = formatted.replace("\n\n\n", "\n\n")  # crude
+
+        return formatted
 
 
 class RubySnippet(Snippet):
@@ -211,7 +219,18 @@ class RubySnippet(Snippet):
         return RubyOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool = False) -> str | None:
-        raise NotImplementedError
+        dest = Path("/tmp/main.rb")
+        self.executor.write(self.image, self.code, dest)
+        exit_code, _ = self.executor.exec_run(self.image, ["/bin/sh", "-c", f"gem install rubocop && rubocop -A {dest}"])
+        _, bytes_ = self.executor.exec_run(self.image, ["cat", str(dest)])
+        if exit_code != 0:
+            formatted = None
+        else:
+            formatted = bytes_.decode("utf-8")
+            if compress:
+                formatted = formatted.replace("\n\n\n", "\n\n")  # crude
+
+        return formatted
 
 
 class RustSnippet(Snippet):
@@ -223,15 +242,26 @@ class RustSnippet(Snippet):
 
     @cached_property
     def output(self) -> RustOutput:
-        self.executor.exec_run(self.image, ["rm", "-rf", "/tmp/*"])
-        self.executor.exec_run(self.image, ["cargo", "init", "--name", "main", "--vcs", "none"], workdir="/tmp")
-        self.executor.write(self.image, self.code, Path("/tmp/src/main.rs"))
-        self.executor.exec_run(self.image, ["cargo", "build"], workdir="/tmp")
-        logs = self.executor.exec_run_timed(self.image, ["target/debug/main"], workdir="/tmp")
+        dest = Path("/tmp/main.rs")
+        self.executor.write(self.image, self.code, dest)
+        self.executor.exec_run(self.image, ["rustc", "main.rs"], workdir="/tmp")
+        logs = self.executor.exec_run_timed(self.image, ["/tmp/main"])
         return RustOutput(logs, self.traceback_verbosity)
 
     def format(self, compress: bool = False) -> str | None:
-        raise NotImplementedError
+        dest = Path("/tmp/main.rs")
+        self.executor.exec_run(self.image, ["rustup", "component", "add", "rustfmt"])
+        self.executor.write(self.image, self.code, dest)
+        exit_code, _ = self.executor.exec_run(self.image, ["rustfmt", str(dest)])
+        _, bytes_ = self.executor.exec_run(self.image, ["cat", str(dest)])
+        if exit_code != 0:
+            formatted = None
+        else:
+            formatted = bytes_.decode("utf-8")
+            if compress:
+                formatted = formatted.replace("\n\n\n", "\n\n")  # crude
+
+        return formatted
 
 
 atexit.register(DockerExecutor.cleanup)
