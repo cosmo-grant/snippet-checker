@@ -42,6 +42,7 @@ class DockerExecutor:
             file_bytes = content.encode("utf-8")
             tarinfo = tarfile.TarInfo(name=dest.name)
             tarinfo.size = len(file_bytes)
+            tarinfo.mtime = time.time()
             tar.addfile(tarinfo, io.BytesIO(file_bytes))
         data.seek(0)
 
