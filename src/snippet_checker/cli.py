@@ -3,7 +3,6 @@ from pathlib import Path
 
 from .check_snippets import check_formatting, check_output
 from .repository import AnkiRepository, DirectoryRepository
-from .snippet import DockerExecutor
 
 parser = ArgumentParser()
 parser.add_argument("target", help="directory or anki tag of the questions you want to check")
@@ -26,11 +25,7 @@ check_formatting_parser.set_defaults(func=check_formatting)
 def app() -> None:
     args = parser.parse_args()
     repository = AnkiRepository(args.anki_profile, args.target) if args.anki_profile is not None else DirectoryRepository(Path(args.target))
-
-    try:
-        args.func(repository, args.interactive)
-    finally:
-        DockerExecutor.cleanup()
+    args.func(repository, args.interactive)
 
 
 if __name__ == "__main__":

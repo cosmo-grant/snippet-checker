@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import io
 import platform
 import subprocess
@@ -230,3 +231,6 @@ class RustSnippet(Snippet):
 
     def format(self, compress: bool = False) -> str | None:
         raise NotImplementedError
+
+
+atexit.register(DockerExecutor.cleanup)
