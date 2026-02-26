@@ -6,14 +6,12 @@ from itertools import count
 
 
 class Output(ABC):
-    def __init__(self, logs: list[tuple[float, bytes]], traceback_verbosity: int):
+    def __init__(self, logs: list[tuple[float, bytes]]):
         output = self._to_string(logs)
         self.raw = output
-        self.traceback_verbosity = traceback_verbosity
-        self.normalised = self.normalise(output)
 
     @abstractmethod
-    def normalise(self, output: str) -> str:
+    def normalise(self, output: str, traceback_verbosity: int) -> str:
         raise NotImplementedError
 
     def _to_string(self, logs: list[tuple[float, bytes]]) -> str:
@@ -39,18 +37,20 @@ class PythonOutput(Output):
     )  # a traceback's last line doesn't start with whitespace so won't be captured
     location_info = re.compile(r'  File "<string>", line.*\n')
 
-    def normalise(self, output: str) -> str:
-        output = self.normalise_memory_addresses(output)
-        output = self.normalise_traceback(output)
-        output = self.normalise_location_info(output)
+    @classmethod
+    def normalise(cls, output: str, traceback_verbosity: int) -> str:
+        normalised = cls.normalise_memory_addresses(output)
+        normalised = cls.normalise_traceback(normalised, traceback_verbosity)
+        normalised = cls.normalise_location_info(normalised)
 
-        return output
+        return normalised
 
-    def normalise_memory_addresses(self, output: str) -> str:
+    @classmethod
+    def normalise_memory_addresses(cls, output: str) -> str:
         addresses = (hex(i) for i in count(0x100, 0x100))  # nice-looking, easily distinguished fake memory addresses
         seen = set()
         normalised = output
-        for match in re.finditer(self.memory_address, output):
+        for match in re.finditer(cls.memory_address, output):
             address = match.group()
             if address in seen:
                 continue
@@ -59,18 +59,20 @@ class PythonOutput(Output):
 
         return normalised
 
-    def normalise_traceback(self, output: str) -> str:
-        if self.traceback_verbosity == 0:
-            normalised = re.sub(self.traceback_except_for_last_line, "", output)
-        elif self.traceback_verbosity == 1:
-            normalised = re.sub(self.traceback_except_for_last_line, "Traceback (most recent call last):\n  ...\n", output)
-        elif self.traceback_verbosity == 2:
+    @classmethod
+    def normalise_traceback(cls, output: str, traceback_verbosity: int) -> str:
+        if traceback_verbosity == 0:
+            normalised = re.sub(cls.traceback_except_for_last_line, "", output)
+        elif traceback_verbosity == 1:
+            normalised = re.sub(cls.traceback_except_for_last_line, "Traceback (most recent call last):\n  ...\n", output)
+        elif traceback_verbosity == 2:
             normalised = output
 
         return normalised
 
-    def normalise_location_info(self, output: str) -> str:
-        normalised = re.sub(self.location_info, "", output)
+    @classmethod
+    def normalise_location_info(cls, output: str) -> str:
+        normalised = re.sub(cls.location_info, "", output)
         return normalised
 
 
@@ -91,11 +93,12 @@ class GoOutput(Output):
         re.DOTALL,
     )
 
-    def normalise_memory_addresses(self, output: str) -> str:
+    @classmethod
+    def normalise_memory_addresses(cls, output: str) -> str:
         addresses = (hex(i) for i in count(0x100, 0x100))  # nice-looking, easily distinguished fake memory addresses
         seen = set()
         normalised = output
-        for match in re.finditer(self.memory_address, output):
+        for match in re.finditer(cls.memory_address, output):
             address = match.group()
             if address in seen:
                 continue
@@ -104,38 +107,44 @@ class GoOutput(Output):
 
         return normalised
 
-    def normalise(self, output: str) -> str:
-        output = self.normalise_memory_addresses(output)
-        output = self.normalise_panic(output)
-        output = self.normalise_stack_overflow(output)
+    @classmethod
+    def normalise(cls, output: str, traceback_verbosity: int) -> str:
+        output = cls.normalise_memory_addresses(output)
+        output = cls.normalise_panic(output)
+        output = cls.normalise_stack_overflow(output)
 
         return output
 
-    def normalise_panic(self, output: str) -> str:
-        normalised = re.sub(self.panic, r"\1", output)
+    @classmethod
+    def normalise_panic(cls, output: str) -> str:
+        normalised = re.sub(cls.panic, r"\1", output)
         return normalised
 
-    def normalise_stack_overflow(self, output: str) -> str:
-        normalised = re.sub(self.stack_overflow, r"\1", output)
+    @classmethod
+    def normalise_stack_overflow(cls, output: str) -> str:
+        normalised = re.sub(cls.stack_overflow, r"\1", output)
         return normalised
 
 
 class NodeOutput(Output):
     "A representation of a Node snippet's output."
 
-    def normalise(self, output: str) -> str:
+    @classmethod
+    def normalise(cls, output: str, traceback_verbosity: int) -> str:
         return output  # TODO:
 
 
 class RubyOutput(Output):
     "A representation of a Ruby snippet's output."
 
-    def normalise(self, output: str) -> str:
+    @classmethod
+    def normalise(cls, output: str, traceback_verbosity: int) -> str:
         return output  # TODO:
 
 
 class RustOutput(Output):
     "A representation of a Rust snippet's output."
 
-    def normalise(self, output: str) -> str:
+    @classmethod
+    def normalise(cls, output: str, traceback_verbosity: int) -> str:
         return output  # TODO:

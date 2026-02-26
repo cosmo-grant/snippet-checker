@@ -125,7 +125,7 @@ def test_note_to_question():
     assert q.check_output is True
     assert q.check_formatting is True
     assert q.compress is True
-    assert q.snippet.traceback_verbosity == 0
+    assert q.traceback_verbosity == 0
 
 
 def test_note_to_question_respects_config_tags():
@@ -149,7 +149,7 @@ def test_note_to_question_respects_config_tags():
     assert q.check_output is False
     assert q.check_formatting is False
     assert q.compress is False
-    assert q.snippet.traceback_verbosity == 2
+    assert q.traceback_verbosity == 2
 
 
 def test_directory_repository_get(tmp_path):

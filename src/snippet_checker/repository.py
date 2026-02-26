@@ -141,8 +141,9 @@ class DirectoryRepository(Repository):
     def fix_output(self, question: Question) -> None:
         "Write the normalised output of the given question's snippet to disk, overwriting the existing output."
         assert isinstance(question.id, Path)
+        normalised = question.snippet.output.normalise(question.snippet.output.raw, question.traceback_verbosity)
         with open(question.id.parent / "output.txt", "w") as f:
-            f.write(question.snippet.output.normalised)
+            f.write(normalised)
 
     def fix_formatting(self, question: Question) -> None:
         "Write a formatted version of the given question's snippet to disk, overwriting the existing snippet."
@@ -179,7 +180,8 @@ class AnkiRepository(Repository):
         "Write the normalised, marked up output of the given question's snippet to the anki database."
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        output = markup_output(question.snippet.output.normalised)
+        normalised = question.snippet.output.normalise(question.snippet.output.raw, question.traceback_verbosity)
+        output = markup_output(normalised)
         note.fields[1] = output
         self.collection.update_note(note)
 

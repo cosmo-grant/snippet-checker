@@ -29,23 +29,25 @@ class Question:
         self.id = id
         self.image = image
         self.given_output = given_output
+        self.traceback_verbosity = traceback_verbosity
         self.compress = compress
         self.snippet: Snippet
         self.output: Output
         if image.startswith("golang"):
-            self.snippet = GoSnippet(code, image, traceback_verbosity)
+            self.snippet = GoSnippet(code, image)
         elif image.startswith("python") or image.startswith("numpy"):
-            self.snippet = PythonSnippet(code, image, traceback_verbosity)
+            self.snippet = PythonSnippet(code, image)
         elif image.startswith("node"):
-            self.snippet = NodeSnippet(code, image, traceback_verbosity)
+            self.snippet = NodeSnippet(code, image)
         elif image.startswith("ruby"):
-            self.snippet = RubySnippet(code, image, traceback_verbosity)
+            self.snippet = RubySnippet(code, image)
         elif image.startswith("rust"):
-            self.snippet = RustSnippet(code, image, traceback_verbosity)
+            self.snippet = RustSnippet(code, image)
         else:
             raise ValueError(f"Cannot tell language from tag 'image:{image}'")
         self.check_output = check_output
         self.check_formatting = check_formatting
 
     def has_ok_output(self) -> bool:
-        return self.snippet.output.normalised == self.given_output
+        normalised = self.snippet.output.normalise(self.snippet.output.raw, self.traceback_verbosity)
+        return normalised == self.given_output

@@ -105,10 +105,6 @@ class Snippet(ABC):
 class PythonSnippet(Snippet):
     "A Python code snippet."
 
-    def __init__(self, code: str, image: str, traceback_verbosity: int):
-        self.traceback_verbosity = traceback_verbosity
-        super().__init__(code, image)
-
     @cached_property
     def output(self) -> PythonOutput:
         dest = Path("/tmp/main.py")
@@ -122,7 +118,7 @@ class PythonSnippet(Snippet):
             },
         )
 
-        return PythonOutput(logs, self.traceback_verbosity)
+        return PythonOutput(logs)
 
     def format(self, compress: bool) -> str | None:
         dest = Path("/tmp/main.py")
@@ -142,10 +138,6 @@ class PythonSnippet(Snippet):
 class GoSnippet(Snippet):
     "A Go code snippet."
 
-    def __init__(self, code: str, image: str, traceback_verbosity: int):
-        self.traceback_verbosity = traceback_verbosity
-        super().__init__(code, image)
-
     @cached_property
     def output(self) -> GoOutput:
         dest = Path("/tmp/main.go")
@@ -156,7 +148,7 @@ class GoSnippet(Snippet):
             workdir="/tmp",
         )
         logs = self.executor.exec_run_timed(self.image, ["/tmp/main"])
-        return GoOutput(logs, self.traceback_verbosity)
+        return GoOutput(logs)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.go")
@@ -176,17 +168,13 @@ class GoSnippet(Snippet):
 class NodeSnippet(Snippet):
     "A Node code snippet."
 
-    def __init__(self, code: str, image: str, traceback_verbosity: int):
-        self.traceback_verbosity = traceback_verbosity
-        super().__init__(code, image)
-
     @cached_property
     def output(self) -> NodeOutput:
         dest = Path("/tmp/main.js")
         self.executor.write(self.image, self.code, dest)
         logs = self.executor.exec_run_timed(self.image, ["node", str(dest)], environment={"NO_COLOR": "1"})
 
-        return NodeOutput(logs, self.traceback_verbosity)
+        return NodeOutput(logs)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.js")
@@ -206,17 +194,13 @@ class NodeSnippet(Snippet):
 class RubySnippet(Snippet):
     "A Ruby code snippet."
 
-    def __init__(self, code: str, image: str, traceback_verbosity: int):
-        self.traceback_verbosity = traceback_verbosity
-        super().__init__(code, image)
-
     @cached_property
     def output(self) -> RubyOutput:
         dest = Path("/tmp/main.rb")
         self.executor.write(self.image, self.code, dest)
         logs = self.executor.exec_run_timed(self.image, ["ruby", str(dest)])
 
-        return RubyOutput(logs, self.traceback_verbosity)
+        return RubyOutput(logs)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.rb")
@@ -236,17 +220,13 @@ class RubySnippet(Snippet):
 class RustSnippet(Snippet):
     "A Rust code snippet."
 
-    def __init__(self, code: str, image: str, traceback_verbosity: int):
-        self.traceback_verbosity = traceback_verbosity
-        super().__init__(code, image)
-
     @cached_property
     def output(self) -> RustOutput:
         dest = Path("/tmp/main.rs")
         self.executor.write(self.image, self.code, dest)
         self.executor.exec_run(self.image, ["rustc", "main.rs"], workdir="/tmp")
         logs = self.executor.exec_run_timed(self.image, ["/tmp/main"])
-        return RustOutput(logs, self.traceback_verbosity)
+        return RustOutput(logs)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.rs")
