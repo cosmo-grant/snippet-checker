@@ -26,10 +26,7 @@ class Output(ABC):
                 output += bytes(f"<~{rounded_delta}s>\n", "utf-8")
                 output += char
 
-        decoded_output = output.decode("utf-8")
-        decoded_output = decoded_output.replace("\r\n", "\n")
-
-        return decoded_output
+        return output.decode("utf-8").replace("\r\n", "\n")
 
 
 class PythonOutput(Output):
