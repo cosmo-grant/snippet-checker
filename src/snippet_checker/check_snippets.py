@@ -41,7 +41,7 @@ def check_output(repository: Repository, interactive: bool) -> int:
             print("Code:")
             colour_print(question.snippet.code, colour="cyan", end="\n\n")
             print("Output (normalised):")
-            normalised = question.snippet.output.normalise(question.snippet.output.raw, traceback_verbosity=question.traceback_verbosity)
+            normalised = question.snippet.output.normalise(question.snippet.output.raw, output_verbosity=question.output_verbosity)
             colour_print(normalised, colour="green", end="\n\n")
             print("Given:")
             colour_print(question.given_output, colour="red")

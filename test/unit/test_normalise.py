@@ -5,7 +5,7 @@ from snippet_checker.output import PythonOutput
 
 class TestPythonNormalise:
     @mark.parametrize(
-        "traceback_verbosity, expected",
+        "output_verbosity, expected",
         [
             (
                 0,
@@ -25,14 +25,14 @@ class TestPythonNormalise:
             ),
         ],
     )
-    def test_normalise_traceback(self, traceback_verbosity, expected):
+    def test_normalise_traceback(self, output_verbosity, expected):
         actual = PythonOutput.normalise_traceback(
             "Traceback (most recent call last):\n"
             '  File "<string>", line 1, in <module>\n'
             "    1 / 0\n"
             "    ~~^~~\n"
             "ZeroDivisionError: division by zero\n",
-            traceback_verbosity,
+            output_verbosity,
         )
 
         assert actual == expected

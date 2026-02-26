@@ -23,13 +23,13 @@ class Question:
         given_output: str,
         check_output: bool,
         check_formatting: bool,
-        traceback_verbosity: int,
+        output_verbosity: int,
         compress: bool,
     ):
         self.id = id
         self.image = image
         self.given_output = given_output
-        self.traceback_verbosity = traceback_verbosity
+        self.output_verbosity = output_verbosity
         self.compress = compress
         self.snippet: Snippet
         self.output: Output
@@ -49,5 +49,5 @@ class Question:
         self.check_formatting = check_formatting
 
     def has_ok_output(self) -> bool:
-        normalised = self.snippet.output.normalise(self.snippet.output.raw, self.traceback_verbosity)
+        normalised = self.snippet.output.normalise(self.snippet.output.raw, self.output_verbosity)
         return normalised == self.given_output

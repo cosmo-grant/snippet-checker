@@ -11,7 +11,7 @@ class Output(ABC):
         self.raw = output
 
     @abstractmethod
-    def normalise(self, output: str, traceback_verbosity: int) -> str:
+    def normalise(self, output: str, output_verbosity: int) -> str:
         raise NotImplementedError
 
     def _to_string(self, logs: list[tuple[float, bytes]]) -> str:
@@ -38,9 +38,9 @@ class PythonOutput(Output):
     location_info = re.compile(r'  File "<string>", line.*\n')
 
     @classmethod
-    def normalise(cls, output: str, traceback_verbosity: int) -> str:
+    def normalise(cls, output: str, output_verbosity: int) -> str:
         normalised = cls.normalise_memory_addresses(output)
-        normalised = cls.normalise_traceback(normalised, traceback_verbosity)
+        normalised = cls.normalise_traceback(normalised, output_verbosity)
         normalised = cls.normalise_location_info(normalised)
 
         return normalised
@@ -60,12 +60,12 @@ class PythonOutput(Output):
         return normalised
 
     @classmethod
-    def normalise_traceback(cls, output: str, traceback_verbosity: int) -> str:
-        if traceback_verbosity == 0:
+    def normalise_traceback(cls, output: str, output_verbosity: int) -> str:
+        if output_verbosity == 0:
             normalised = re.sub(cls.traceback_except_for_last_line, "", output)
-        elif traceback_verbosity == 1:
+        elif output_verbosity == 1:
             normalised = re.sub(cls.traceback_except_for_last_line, "Traceback (most recent call last):\n  ...\n", output)
-        elif traceback_verbosity == 2:
+        elif output_verbosity == 2:
             normalised = output
 
         return normalised
@@ -108,7 +108,7 @@ class GoOutput(Output):
         return normalised
 
     @classmethod
-    def normalise(cls, output: str, traceback_verbosity: int) -> str:
+    def normalise(cls, output: str, output_verbosity: int) -> str:
         output = cls.normalise_memory_addresses(output)
         output = cls.normalise_panic(output)
         output = cls.normalise_stack_overflow(output)
@@ -130,7 +130,7 @@ class NodeOutput(Output):
     "A representation of a Node snippet's output."
 
     @classmethod
-    def normalise(cls, output: str, traceback_verbosity: int) -> str:
+    def normalise(cls, output: str, output_verbosity: int) -> str:
         return output  # TODO:
 
 
@@ -138,7 +138,7 @@ class RubyOutput(Output):
     "A representation of a Ruby snippet's output."
 
     @classmethod
-    def normalise(cls, output: str, traceback_verbosity: int) -> str:
+    def normalise(cls, output: str, output_verbosity: int) -> str:
         return output  # TODO:
 
 
@@ -146,5 +146,5 @@ class RustOutput(Output):
     "A representation of a Rust snippet's output."
 
     @classmethod
-    def normalise(cls, output: str, traceback_verbosity: int) -> str:
+    def normalise(cls, output: str, output_verbosity: int) -> str:
         return output  # TODO:

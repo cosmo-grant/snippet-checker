@@ -84,16 +84,16 @@ def test_anki_config_defaults():
     assert config.image == "python:3.13"
     assert config.check_output is True
     assert config.check_format is True
-    assert config.traceback_verbosity == 0
+    assert config.output_verbosity == 0
     assert config.compress is True
 
 
 def test_anki_config_flags_override_defaults():
-    config = AnkiConfig(["image:golang:1.25", "no_check_output", "no_check_format", "traceback_verbosity:2", "no_compress"])
+    config = AnkiConfig(["image:golang:1.25", "no_check_output", "no_check_format", "output_verbosity:2", "no_compress"])
     assert config.image == "golang:1.25"
     assert config.check_output is False
     assert config.check_format is False
-    assert config.traceback_verbosity == 2
+    assert config.output_verbosity == 2
     assert config.compress is False
 
 
@@ -125,7 +125,7 @@ def test_note_to_question():
     assert q.check_output is True
     assert q.check_formatting is True
     assert q.compress is True
-    assert q.traceback_verbosity == 0
+    assert q.output_verbosity == 0
 
 
 def test_note_to_question_respects_config_tags():
@@ -142,14 +142,14 @@ def test_note_to_question_respects_config_tags():
             "snip:no_check_output",
             "snip:no_check_format",
             "snip:no_compress",
-            "snip:traceback_verbosity:2",
+            "snip:output_verbosity:2",
         ],
     )
     q = note_to_question(note)
     assert q.check_output is False
     assert q.check_formatting is False
     assert q.compress is False
-    assert q.traceback_verbosity == 2
+    assert q.output_verbosity == 2
 
 
 def test_directory_repository_get(tmp_path):

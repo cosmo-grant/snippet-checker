@@ -16,7 +16,7 @@ class DirectoryConfig:
     images: dict[str, str] = field(default_factory=dict)
     check_formatting: bool = True
     check_output: bool = True
-    traceback_verbosity: int = 1
+    output_verbosity: int = 1
     compress: bool = False
 
 
@@ -26,11 +26,9 @@ class AnkiConfig:
         self.check_output = Tag.NO_CHECK_OUTPUT.value not in tags
         self.check_format = Tag.NO_CHECK_FORMAT.value not in tags
         try:
-            self.traceback_verbosity = int(
-                next(tag for tag in tags if tag.startswith("traceback_verbosity:")).removeprefix("traceback_verbosity:")
-            )
+            self.output_verbosity = int(next(tag for tag in tags if tag.startswith("output_verbosity:")).removeprefix("output_verbosity:"))
         except StopIteration:
-            self.traceback_verbosity = 0
+            self.output_verbosity = 0
         self.compress = Tag.NO_COMPRESS.value not in tags
 
 
@@ -61,7 +59,7 @@ def note_to_question(note: AnkiNote) -> Question:
         output,
         config.check_output,
         config.check_format,
-        config.traceback_verbosity,
+        config.output_verbosity,
         config.compress,
     )
 
@@ -131,7 +129,7 @@ class DirectoryRepository(Repository):
                     given_output=output,
                     check_output=config.check_output,
                     check_formatting=config.check_formatting,
-                    traceback_verbosity=config.traceback_verbosity,
+                    output_verbosity=config.output_verbosity,
                     compress=config.compress,
                 )
             )
@@ -141,7 +139,7 @@ class DirectoryRepository(Repository):
     def fix_output(self, question: Question) -> None:
         "Write the normalised output of the given question's snippet to disk, overwriting the existing output."
         assert isinstance(question.id, Path)
-        normalised = question.snippet.output.normalise(question.snippet.output.raw, question.traceback_verbosity)
+        normalised = question.snippet.output.normalise(question.snippet.output.raw, question.output_verbosity)
         with open(question.id.parent / "output.txt", "w") as f:
             f.write(normalised)
 
@@ -180,7 +178,7 @@ class AnkiRepository(Repository):
         "Write the normalised, marked up output of the given question's snippet to the anki database."
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        normalised = question.snippet.output.normalise(question.snippet.output.raw, question.traceback_verbosity)
+        normalised = question.snippet.output.normalise(question.snippet.output.raw, question.output_verbosity)
         output = markup_output(normalised)
         note.fields[1] = output
         self.collection.update_note(note)
