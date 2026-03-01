@@ -25,6 +25,7 @@ class Question:
         check_formatting: bool,
         output_verbosity: int,
         compress: bool,
+        review: bool = False,
     ):
         self.id = id
         self.image = image
@@ -47,6 +48,7 @@ class Question:
             raise ValueError(f"Cannot tell language from tag 'image:{image}'")
         self.check_output = check_output
         self.check_formatting = check_formatting
+        self.review = review
 
     def has_ok_output(self) -> bool:
         normalised = self.snippet.output.normalise(self.snippet.output.raw, self.output_verbosity)

@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
+import tomli_w
 from anki.storage import Collection
 
 from .question import Question, Tag
@@ -18,6 +19,7 @@ class DirectoryConfig:
     check_output: bool = True
     output_verbosity: int = 1
     compress: bool = False
+    review: bool = False
 
 
 class AnkiConfig:
@@ -131,6 +133,7 @@ class DirectoryRepository(Repository):
                     check_formatting=config.check_formatting,
                     output_verbosity=config.output_verbosity,
                     compress=config.compress,
+                    review=config.review,
                 )
             )
 
@@ -152,7 +155,28 @@ class DirectoryRepository(Repository):
             f.write(formatted)
 
     def add_tag(self, question: Question, tag: Tag) -> None:
-        pass  # TODO:
+        """Write a tag to snippet_checker.toml in the question's directory.
+        The tag indicates special treatment, e.g. don't check output."""
+        assert isinstance(question.id, Path)
+        config_path = question.id.parent / "snippet_checker.toml"
+
+        try:
+            with open(config_path, "rb") as f:
+                config = dict(tomllib.load(f))
+        except FileNotFoundError:
+            config = {}
+
+        if tag == Tag.REVIEW:
+            config["review"] = True
+        elif tag == Tag.NO_CHECK_OUTPUT:
+            config["check_output"] = False
+        elif tag == Tag.NO_CHECK_FORMAT:
+            config["check_formatting"] = False
+        elif tag == Tag.NO_COMPRESS:
+            config["compress"] = False
+
+        with open(config_path, "wb") as f:
+            tomli_w.dump(config, f)
 
 
 class AnkiRepository(Repository):

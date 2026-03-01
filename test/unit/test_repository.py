@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import tomllib
 from dataclasses import dataclass
 
 import pytest
 
+from snippet_checker.question import Question, Tag
 from snippet_checker.repository import (
     AnkiConfig,
     DirectoryRepository,
@@ -206,3 +208,66 @@ def test_directory_repository_multiple_snippets_raises(tmp_path):
     repo = DirectoryRepository(tmp_path)
     with pytest.raises(Exception, match="multiple snippets"):
         repo.get()
+
+
+def test_directory_repository_add_tag_creates_config(tmp_path):
+    question = Question(
+        id=tmp_path / "main.py",
+        code="",
+        image="python:3.13",
+        given_output="",
+        check_output=True,
+        check_formatting=True,
+        output_verbosity=0,
+        compress=False,
+    )
+
+    repo = DirectoryRepository(tmp_path)
+    repo.add_tag(question, Tag.REVIEW)
+
+    with open(tmp_path / "snippet_checker.toml", "rb") as f:
+        config = tomllib.load(f)
+
+    assert config == {"review": True}
+
+
+def test_directory_repository_add_tag_idempotent(tmp_path):
+    (tmp_path / "snippet_checker.toml").write_text("review = true\n")
+    question = Question(
+        id=tmp_path / "main.py",
+        code="",
+        image="python:3.13",
+        given_output="",
+        check_output=True,
+        check_formatting=True,
+        output_verbosity=0,
+        compress=False,
+    )
+    repo = DirectoryRepository(tmp_path)
+    repo.add_tag(question, Tag.REVIEW)
+
+    with open(tmp_path / "snippet_checker.toml", "rb") as f:
+        config = tomllib.load(f)
+
+    assert config == {"review": True}
+
+
+def test_directory_repository_add_tag_merges_existing(tmp_path):
+    (tmp_path / "snippet_checker.toml").write_text("compress = true\n")
+    question = Question(
+        id=tmp_path / "main.py",
+        code="",
+        image="python:3.13",
+        given_output="",
+        check_output=True,
+        check_formatting=True,
+        output_verbosity=0,
+        compress=False,
+    )
+    repo = DirectoryRepository(tmp_path)
+    repo.add_tag(question, Tag.REVIEW)
+
+    with open(tmp_path / "snippet_checker.toml", "rb") as f:
+        config = tomllib.load(f)
+
+    assert config == {"compress": True, "review": True}
