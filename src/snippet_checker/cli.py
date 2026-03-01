@@ -1,3 +1,4 @@
+import logging
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -5,6 +6,7 @@ from .check_snippets import check_formatting, check_output
 from .repository import AnkiRepository, DirectoryRepository
 
 parser = ArgumentParser()
+parser.add_argument("-v", "--verbose", action="store_true", help="enable debug logging")
 parser.add_argument("target", help="directory or anki tag of the questions you want to check")
 parser.add_argument("--anki-profile", "-p", help="name of anki profile to use, if relevant")
 subparsers = parser.add_subparsers(required=True)
@@ -24,6 +26,9 @@ check_formatting_parser.set_defaults(func=check_formatting)
 
 def app() -> None:
     args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+    )
     repository = AnkiRepository(args.anki_profile, args.target) if args.anki_profile is not None else DirectoryRepository(Path(args.target))
     args.func(repository, args.interactive)
 

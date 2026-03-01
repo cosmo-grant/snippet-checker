@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import atexit
 import io
+import logging
 import platform
 import tarfile
 import time
@@ -13,6 +14,8 @@ from typing import ClassVar
 import docker
 
 from .output import GoOutput, NodeOutput, Output, PythonOutput, RubyOutput, RustOutput
+
+logger = logging.getLogger(__name__)
 
 
 class DockerExecutor:
@@ -27,6 +30,14 @@ class DockerExecutor:
     def _get_container(self, image: str) -> docker.models.containers.Container:
         """Get or create a long-running container for the given image."""
         if image not in self._container_pool:
+            try:
+                self._client.images.get(image)
+            except docker.errors.ImageNotFound:
+                logger.info(f"Pulling image {image}...")
+                self._client.images.pull(image)
+
+            logger.info(f"Creating container from image {image}...")
+
             self._container_pool[image] = self._client.containers.run(
                 image,
                 ["tail", "-f", "/dev/null"],
