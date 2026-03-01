@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 from enum import Enum
+from typing import Literal
 
 from .question import Question, Tag
 from .repository import Repository
+
+Mode = Literal["check", "interactive", "fix"]
 
 
 class UserInput(Enum):
@@ -24,7 +29,7 @@ def get_user_input() -> UserInput:
         return UserInput("MOVE ON")
 
 
-def check_output(repository: Repository, interactive: bool) -> int:
+def check_output(repository: Repository, mode: Mode) -> int:
     failed: list[Question] = []
     fixed: list[Question] = []
     ignored: list[Question] = []
@@ -46,7 +51,7 @@ def check_output(repository: Repository, interactive: bool) -> int:
             print("Given:")
             colour_print(question.given_output, colour="red")
             failed.append(question)
-            if interactive:
+            if mode == "interactive":
                 response = get_user_input()
                 if response == UserInput.REPLACE:
                     repository.fix_output(question)
@@ -61,6 +66,10 @@ def check_output(repository: Repository, interactive: bool) -> int:
                     print("\N{RIGHT-POINTING MAGNIFYING GLASS} Added 'review' tag.")
                 else:
                     print("\N{FACE WITHOUT MOUTH} Moving on.")
+            elif mode == "fix":
+                repository.fix_output(question)
+                fixed.append(question)
+                print("\N{SPARKLES} Auto-fixed.")
             print("----------")
 
     if failed:
@@ -78,7 +87,7 @@ def check_output(repository: Repository, interactive: bool) -> int:
         return 0
 
 
-def check_formatting(repository: Repository, interactive: bool) -> int:
+def check_formatting(repository: Repository, mode: Mode) -> int:
     failed: list[Question] = []
     fixed: list[Question] = []
     ignored: list[Question] = []
@@ -106,7 +115,7 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
             print("Given:")
             colour_print(question.snippet.code, colour="red")
             failed.append(question)
-            if interactive:
+            if mode == "interactive":
                 response = get_user_input()
                 if response == UserInput.REPLACE:
                     repository.fix_formatting(question)
@@ -121,6 +130,10 @@ def check_formatting(repository: Repository, interactive: bool) -> int:
                     print("\N{RIGHT-POINTING MAGNIFYING GLASS} Added 'review' tag.")
                 else:
                     print("\N{FACE WITHOUT MOUTH} Moving on.")
+            elif mode == "fix":
+                repository.fix_formatting(question)
+                fixed.append(question)
+                print("\N{SPARKLES} Auto-fixed.")
             print("----------")
 
     if failed:
