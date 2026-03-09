@@ -1,6 +1,6 @@
 from pytest import mark
 
-from snippet_checker.output import PythonOutput
+from snippet_checker.output import NodeOutput, PythonOutput
 
 
 class TestPythonNormalise:
@@ -42,5 +42,39 @@ class TestPythonNormalise:
             "<__main__.C object at 0x104cfa450>\n<__main__.D object at 0x104cfa5d0>\n<__main__.C object at 0x104cfa450>\n"
         )
         expected = "<__main__.C object at 0x100>\n<__main__.D object at 0x200>\n<__main__.C object at 0x100>\n"
+
+        assert actual == expected
+
+
+class TestNodeNormalise:
+    @mark.parametrize(
+        "output_verbosity, expected",
+        [
+            (
+                0,
+                "ReferenceError: x is not defined\n",
+            ),
+        ],
+    )
+    def test_normalise_traceback(self, output_verbosity, expected):
+        actual = NodeOutput.normalise_traceback(
+            "/tmp/main.js:2\n"
+            "console.log(x)\n"
+            "            ^\n"
+            "\n"
+            "ReferenceError: x is not defined\n"
+            "    at Object.<anonymous> (/tmp/main.js:2:13)\n"
+            "    at Module._compile (node:internal/modules/cjs/loader:1804:14)\n"
+            "    at Object..js (node:internal/modules/cjs/loader:1936:10)\n"
+            "    at Module.load (node:internal/modules/cjs/loader:1525:32)\n"
+            "    at Module._load (node:internal/modules/cjs/loader:1327:12)\n"
+            "    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\n"
+            "    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)\n"
+            "    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n"
+            "    at node:internal/main/run_main_module:33:47\n"
+            "\n"
+            "Node.js v24.13.1\n",
+            output_verbosity,
+        )
 
         assert actual == expected

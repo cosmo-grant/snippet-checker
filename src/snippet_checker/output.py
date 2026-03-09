@@ -129,9 +129,31 @@ class GoOutput(Output):
 class NodeOutput(Output):
     "A representation of a Node snippet's output."
 
+    traceback = re.compile(
+        r"(?P<location>/tmp/main.js:\d+\n)"
+        r"(?P<offending_line>.*\n)"
+        r"(?P<pointer>.*\n)"
+        r"\n"  # empty line
+        r"(?P<key_line>.*\n)"
+        r"(.*\n)*"  # stack trace and empty line
+        r"(?P<version>Node.js v.*\n)"  # version
+    )
+
     @classmethod
     def normalise(cls, output: str, output_verbosity: int) -> str:
-        return output  # TODO:
+        normalised = cls.normalise_traceback(output, output_verbosity)
+        return normalised
+
+    @classmethod
+    def normalise_traceback(cls, output: str, output_verbosity: int) -> str:
+        if output_verbosity == 0:
+            normalised = re.sub(cls.traceback, r"\g<key_line>", output)
+        elif output_verbosity == 1:
+            pass
+        elif output_verbosity == 2:
+            normalised = output
+
+        return normalised
 
 
 class RubyOutput(Output):

@@ -57,6 +57,31 @@ class TestNodeOutput:
         snippet = NodeSnippet(code, "node:22")
         assert snippet.output.raw == "hello\n"
 
+    def test_hello_error(self):
+        code = 'console.log("hello");\nconsole.log(x)'
+        snippet = NodeSnippet(code, "node:24.13.1")
+        assert (
+            snippet.output.raw
+            == """hello
+/tmp/main.js:2
+console.log(x)
+            ^
+
+ReferenceError: x is not defined
+    at Object.<anonymous> (/tmp/main.js:2:13)
+    at Module._compile (node:internal/modules/cjs/loader:1804:14)
+    at Object..js (node:internal/modules/cjs/loader:1936:10)
+    at Module.load (node:internal/modules/cjs/loader:1525:32)
+    at Module._load (node:internal/modules/cjs/loader:1327:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+
+Node.js v24.13.1
+"""
+        )
+
 
 class TestRubyOutput:
     def test_hello(self):
