@@ -9,6 +9,7 @@ from snippet_checker.question import Question, Tag
 from snippet_checker.repository import (
     AnkiConfig,
     DirectoryRepository,
+    _find_config,
     escape_html,
     markdown_code,
     markdown_output,
@@ -271,3 +272,35 @@ def test_directory_repository_add_tag_merges_existing(tmp_path):
         config = tomllib.load(f)
 
     assert config == {"compress": True, "review": True}
+
+
+def test_find_config_in_given_directory(tmp_path):
+    config_file = tmp_path / "snippet_checker.toml"
+    config_file.touch()
+    assert _find_config(tmp_path) == config_file
+
+
+def test_find_config_in_parent_directory(tmp_path):
+    config_file = tmp_path / "snippet_checker.toml"
+    config_file.touch()
+    child = tmp_path / "child"
+    child.mkdir()
+    assert _find_config(child) == config_file
+
+
+def test_find_config_returns_none_when_no_config(tmp_path):
+    assert _find_config(tmp_path) is None
+
+
+def test_directory_repository_finds_config_in_parent(tmp_path):
+    (tmp_path / "snippet_checker.toml").write_text('[images]\npy = "python:3.13"\n')
+    child = tmp_path / "child"
+    child.mkdir()
+    (child / "snippet.py").write_text("print(1)")
+    (child / "output.txt").write_text("1\n")
+
+    repo = DirectoryRepository(child)
+    questions = repo.get()
+
+    assert len(questions) == 1
+    assert questions[0].image == "python:3.13"

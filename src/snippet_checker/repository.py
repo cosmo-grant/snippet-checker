@@ -84,13 +84,25 @@ class Repository(ABC):
         raise NotImplementedError
 
 
+def _find_config(start: Path) -> Path | None:
+    current = start.resolve()
+    while True:
+        candidate = current / "snippet_checker.toml"
+        if candidate.exists():
+            return candidate
+        if current.parent == current:
+            return None
+        current = current.parent
+
+
 class DirectoryRepository(Repository):
     def __init__(self, dir: Path):
         self.dir = dir
-        try:
-            with open(dir / "snippet_checker.toml", "rb") as f:
+        config_path = _find_config(dir)
+        if config_path is not None:
+            with open(config_path, "rb") as f:
                 self.root_config = DirectoryConfig(**tomllib.load(f))
-        except FileNotFoundError:
+        else:
             self.root_config = DirectoryConfig()
 
     def get(self) -> list[Question]:
