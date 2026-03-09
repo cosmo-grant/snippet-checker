@@ -109,11 +109,11 @@ class GoOutput(Output):
 
     @classmethod
     def normalise(cls, output: str, output_verbosity: int) -> str:
-        output = cls.normalise_memory_addresses(output)
-        output = cls.normalise_panic(output)
-        output = cls.normalise_stack_overflow(output)
+        normalised = cls.normalise_memory_addresses(output)
+        normalised = cls.normalise_panic(normalised)
+        normalised = cls.normalise_stack_overflow(normalised)
 
-        return output
+        return normalised
 
     @classmethod
     def normalise_panic(cls, output: str) -> str:
