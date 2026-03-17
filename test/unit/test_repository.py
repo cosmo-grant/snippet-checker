@@ -113,7 +113,7 @@ def test_anki_config_flags_override_defaults():
 
 @dataclass
 class FakeNote:
-    """Minimal note structure matching AnkiNote protocol."""
+    """Minimal note structure matching anki.notes.Note protocol."""
 
     id: int
     fields: list[str]

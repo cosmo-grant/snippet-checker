@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import platform
 import re
 import tomllib
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING
 
 import tomli_w
 from anki.storage import Collection
 
 from .config import BaseConfig, NoteTypeConfig
 from .question import Question, Tag
+
+if TYPE_CHECKING:
+    from anki.notes import Note
 
 
 @dataclass
@@ -35,26 +40,7 @@ class AnkiConfig:
         self.compress = Tag.NO_COMPRESS.value not in tags
 
 
-class AnkiNote(Protocol):
-    """Protocol for Anki note objects. Matches the shape used by anki.notes.Note."""
-
-    # TODO: can we use anki Note class directly, maybe via TYPE_CHECKING?
-
-    @property
-    def id(self) -> Any: ...
-
-    @property
-    def fields(self) -> list[str]: ...
-
-    @property
-    def tags(self) -> list[str]: ...
-
-    def note_type(self) -> dict[str, Any]: ...
-
-    def keys(self) -> list[str]: ...
-
-
-def note_to_question(note_type_configs: list[NoteTypeConfig], note: AnkiNote) -> Question:
+def note_to_question(note_type_configs: list[NoteTypeConfig], note: Note) -> Question:
     """Convert an Anki note to a Question."""
     note_type_config = next(config for config in note_type_configs if config.name == note.note_type()["name"])
     fields = dict(zip(note.keys(), note.fields, strict=True))
