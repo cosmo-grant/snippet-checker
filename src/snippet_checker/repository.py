@@ -9,6 +9,7 @@ from typing import Any, Protocol
 import tomli_w
 from anki.storage import Collection
 
+from .config import BaseConfig, NoteTypeConfig
 from .question import Question, Tag
 
 
@@ -37,6 +38,8 @@ class AnkiConfig:
 class AnkiNote(Protocol):
     """Protocol for Anki note objects. Matches the shape used by anki.notes.Note."""
 
+    # TODO: can we use anki Note class directly, maybe via TYPE_CHECKING?
+
     @property
     def id(self) -> Any: ...
 
@@ -46,23 +49,30 @@ class AnkiNote(Protocol):
     @property
     def tags(self) -> list[str]: ...
 
+    def note_type(self) -> dict[str, Any]: ...
 
-def note_to_question(note: AnkiNote) -> Question:
+    def keys(self) -> list[str]: ...
+
+
+def note_to_question(note_type_configs: list[NoteTypeConfig], note: AnkiNote) -> Question:
     """Convert an Anki note to a Question."""
-    code, output, _, _ = note.fields
-    code = markdown_code(code)
-    output = markdown_output(output)
+    note_type_config = next(config for config in note_type_configs if config.name == note.note_type()["name"])
+    fields = dict(zip(note.keys(), note.fields, strict=True))
+    code_field = fields[note_type_config.code_field.name]
+    output_field = fields[note_type_config.output_field.name]
+    code = extract_target(note_type_config.code_field.pattern, code_field)
+    output = extract_target(note_type_config.output_field.pattern, output_field)
     tags = [tag.removeprefix("snip:") for tag in note.tags if tag.startswith("snip:")]
-    config = AnkiConfig(tags)
+    note_config = AnkiConfig(tags)
     return Question(
         note.id,
         code,
-        config.image,
+        note_config.image,
         output,
-        config.check_output,
-        config.check_format,
-        config.output_verbosity,
-        config.compress,
+        note_config.check_output,
+        note_config.check_format,
+        note_config.output_verbosity,
+        note_config.compress,
     )
 
 
@@ -192,14 +202,14 @@ class DirectoryRepository(Repository):
 
 
 class AnkiRepository(Repository):
-    def __init__(self, profile: str, tag: str):
+    def __init__(self, base_config: BaseConfig, tag: str):
         system = platform.system()
-        # TODO: pass profile via cli arg or config?
         if system == "Linux":
-            path = Path.home() / f".local/share/Anki2/{profile}/collection.anki2"
+            path = Path.home() / f".local/share/Anki2/{base_config.profile}/collection.anki2"
         else:  # mac
-            path = Path.home() / f"Library/Application Support/Anki2/{profile}/collection.anki2"
+            path = Path.home() / f"Library/Application Support/Anki2/{base_config.profile}/collection.anki2"
 
+        self.base_config = base_config
         self.collection = Collection(str(path))
         self.tag = tag
 
@@ -208,15 +218,18 @@ class AnkiRepository(Repository):
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
         self.notes = [note for note in notes if self.tag in note.tags]
-        return [note_to_question(note) for note in self.notes]
+        return [note_to_question(self.base_config.note_types, note) for note in self.notes]
 
     def fix_output(self, question: Question) -> None:
         "Write the normalised, marked up output of the given question's snippet to the anki database."
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         normalised = question.snippet.output.normalise(question.snippet.output.raw, question.output_verbosity)
-        output = markup_output(normalised)
-        note.fields[1] = output
+        note_type_config = next(config for config in self.base_config.note_types if config.name == note.note_type()["name"])
+        index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.output_field.name)
+        current = note.fields[index]
+        fixed = replace_target(note_type_config.output_field.pattern, current, escape_html(normalised))
+        note.fields[index] = fixed
         self.collection.update_note(note)
 
     def fix_formatting(self, question) -> None:
@@ -225,8 +238,11 @@ class AnkiRepository(Repository):
         formatted = question.snippet.format(compress=question.compress)
         assert formatted is not None  # we only fix if no error when formatting
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        formatted = markup_code(formatted, question.language)
-        note.fields[0] = formatted
+        note_type_config = next(config for config in self.base_config.note_types if config.name == note.note_type()["name"])
+        index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.code_field.name)
+        current = note.fields[index]
+        fixed = replace_target(note_type_config.code_field.pattern, current, formatted)
+        note.fields[index] = fixed
         self.collection.update_note(note)
 
     def add_tag(self, question: Question, tag: Tag) -> None:
@@ -266,28 +282,16 @@ def escape_html(plain: str) -> str:
     return plain.replace("&", "&amp;").replace("<", "&lt;")  # order matters
 
 
-def markdown_code(code: str) -> str:
-    "Process an anki code field, which is html, returning source code."
-    code = re.sub(r'<pre><code class="lang-\w+">', "", code)
-    code = code.removesuffix("</code></pre>")
-    code = unescape_html(code)
-    return code
+def extract_target(pattern: re.Pattern, raw: str) -> str:
+    "Extract the html-unescaped match for the pattern's 'target' group in `raw`."
+    m = pattern.search(raw)
+    assert m is not None
+    return unescape_html(m.group("target"))
 
 
-def markup_code(code: str, language: str) -> str:
-    "Process source code into an anki code field, which is html."
-    code = escape_html(code)
-    return f'<pre><code class="lang-{language}">{code}</code></pre>'
-
-
-def markdown_output(output: str) -> str:
-    "Process an anki output field, which is html, returning plaintext."
-    output = output.removeprefix("<pre><samp>").removesuffix("</samp></pre>")
-    output = unescape_html(output)
-    return output
-
-
-def markup_output(output: str) -> str:
-    "Process code output into an anki output field, which is html."
-    output = escape_html(output)
-    return f"<pre><samp>{output}</samp></pre>"
+def replace_target(pattern: re.Pattern, current: str, target_repl: str) -> str:
+    "Replace the match for the pattern's 'target' group in `current` with html-escaped `target_repl`."
+    m = pattern.search(current)
+    assert m is not None
+    start, end = m.span("target")
+    return current[:start] + escape_html(target_repl) + current[end:]

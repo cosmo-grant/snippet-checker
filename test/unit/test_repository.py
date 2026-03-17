@@ -1,21 +1,22 @@
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
+from snippet_checker.config import FieldConfig, NoteTypeConfig
 from snippet_checker.question import Question, Tag
 from snippet_checker.repository import (
     AnkiConfig,
     DirectoryRepository,
     _find_config,
     escape_html,
-    markdown_code,
-    markdown_output,
-    markup_code,
-    markup_output,
+    extract_target,
     note_to_question,
+    replace_target,
     unescape_html,
 )
 
@@ -40,46 +41,56 @@ def test_escape_unescape_roundtrip(text):
     assert unescape_html(escape_html(text)) == text
 
 
-def test_markdown_code():
-    html = '<pre><code class="lang-python">x &lt; 1 &amp; y &gt; 2</code></pre>'
-    assert markdown_code(html) == "x < 1 & y > 2"
+def test_extract_target():
+    actual = extract_target(
+        re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$'),
+        '<pre><code class="lang-python">print(1 + 1)</code></pre>',
+    )
+    expected = "print(1 + 1)"
+    assert actual == expected
 
 
-def test_markup_code():
-    assert markup_code("x < 1 & y > 2", "python") == '<pre><code class="lang-python">x &lt; 1 &amp; y > 2</code></pre>'
+def test_extract_target_unescapes_html():
+    actual = extract_target(
+        re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$'),
+        '<pre><code class="lang-python">print(1 &lt; 2)</code></pre>',
+    )
+    expected = "print(1 < 2)"
+    assert actual == expected
+
+
+def test_replace_target():
+    actual = replace_target(
+        re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$'),
+        '<pre><code class="lang-python">print(1+1)</code></pre>',
+        "print(1 + 1)",
+    )
+    expected = '<pre><code class="lang-python">print(1 + 1)</code></pre>'
+
+    assert actual == expected
+
+
+def test_replace_target_escapes_html():
+    actual = replace_target(
+        re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$'),
+        '<pre><code class="lang-python">x&lt;1</code></pre>',
+        "x < 1",
+    )
+    expected = '<pre><code class="lang-python">x &lt; 1</code></pre>'
+    assert actual == expected
 
 
 @pytest.mark.parametrize(
-    "code",
+    "original",
     [
-        "x = 1",
-        "def foo():\n    pass",
-        "print('<html>')",
+        '<pre><code class="lang-python">x = 1</code></pre>',
+        '<pre><code class="lang-python">def foo():\n    pass</code></pre>',
+        '<pre><code class="lang-python">print("&lt;html>")</code></pre>',
     ],
 )
-def test_code_roundtrip(code):
-    assert markdown_code(markup_code(code, "python")) == code
-
-
-def test_markdown_output():
-    html = "<pre><samp>&lt;class 'int'&gt;</samp></pre>"
-    assert markdown_output(html) == "<class 'int'>"
-
-
-def test_markup_output():
-    assert markup_output("<class 'int'>") == "<pre><samp>&lt;class 'int'></samp></pre>"
-
-
-@pytest.mark.parametrize(
-    "output",
-    [
-        "plain text",
-        "ValueError: list.remove(x): x not in list",
-        "[1, 2, 3]\nTrue",
-    ],
-)
-def test_output_roundtrip(output):
-    assert markdown_output(markup_output(output)) == output
+def test_target_roundtrip(original):
+    pattern = re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$')
+    assert replace_target(pattern, original, extract_target(pattern, original)) == original
 
 
 def test_anki_config_defaults():
@@ -108,6 +119,12 @@ class FakeNote:
     fields: list[str]
     tags: list[str]
 
+    def note_type(self) -> dict[str, Any]:
+        return {"name": "code_output"}
+
+    def keys(self) -> list[str]:
+        return ["code", "output", "explanation", "context"]
+
 
 def test_note_to_question():
     note = FakeNote(
@@ -120,7 +137,14 @@ def test_note_to_question():
         ],
         tags=["snip:image:python:3.13"],
     )
-    q = note_to_question(note)
+    note_type_configs = [
+        NoteTypeConfig(
+            name="code_output",
+            code_field=FieldConfig(name="code", pattern=re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$')),
+            output_field=FieldConfig(name="output", pattern=re.compile(r"(?s)^<pre><samp>(?P<target>.*)</samp></pre>$")),
+        ),
+    ]
+    q = note_to_question(note_type_configs, note)
     assert q.id == 123
     assert q.snippet.code == "print(1 + 1 == 2)"
     assert q.given_output == "True"
@@ -148,7 +172,14 @@ def test_note_to_question_respects_config_tags():
             "snip:output_verbosity:2",
         ],
     )
-    q = note_to_question(note)
+    note_type_configs = [
+        NoteTypeConfig(
+            name="code_output",
+            code_field=FieldConfig(name="code", pattern=re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$')),
+            output_field=FieldConfig(name="output", pattern=re.compile(r"(?s)^<pre><samp>(?P<target>.*)</samp></pre>$")),
+        ),
+    ]
+    q = note_to_question(note_type_configs, note)
     assert q.check_output is False
     assert q.check_formatting is False
     assert q.compress is False
