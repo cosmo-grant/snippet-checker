@@ -42,7 +42,7 @@ class AnkiConfig:
 
 def note_to_question(note_type_configs: list[NoteTypeConfig], note: Note) -> Question:
     """Convert an Anki note to a Question."""
-    note_type_config = next(config for config in note_type_configs if config.name == note.note_type()["name"])
+    note_type_config = next(config for config in note_type_configs if config.name == note.note_type()["name"])  # type: ignore[index]
     fields = dict(zip(note.keys(), note.fields, strict=True))
     code_field = fields[note_type_config.code_field.name]
     output_field = fields[note_type_config.output_field.name]
@@ -211,7 +211,7 @@ class AnkiRepository(Repository):
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         normalised = question.snippet.output.normalise(question.snippet.output.raw, question.output_verbosity)
-        note_type_config = next(config for config in self.base_config.note_types if config.name == note.note_type()["name"])
+        note_type_config = next(config for config in self.base_config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
         index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.output_field.name)
         current = note.fields[index]
         fixed = replace_target(note_type_config.output_field.pattern, current, escape_html(normalised))
@@ -224,7 +224,7 @@ class AnkiRepository(Repository):
         formatted = question.snippet.format(compress=question.compress)
         assert formatted is not None  # we only fix if no error when formatting
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        note_type_config = next(config for config in self.base_config.note_types if config.name == note.note_type()["name"])
+        note_type_config = next(config for config in self.base_config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
         index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.code_field.name)
         current = note.fields[index]
         fixed = replace_target(note_type_config.code_field.pattern, current, formatted)
