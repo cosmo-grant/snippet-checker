@@ -1,0 +1,18 @@
+<p>How many variables named <code>i</code>?</p>
+
+<p>
+  Python and Go 1.21 answer: one.
+  Its value is 0, then 1, then 2, then 3.
+  Loop variables are per-loop, not per-iteration.
+  <code>closures</code>' closures all see that one variable.
+  When the closures are called, its value is 3.
+</p>
+
+<p>
+  Javascript and Go 1.22 answer: three (or is it four?).
+  The first has value 0, the second 1, the third 2, and their values don't change.
+  Loop variables are per-iteration, not per-loop.
+  <code>closures</code>' closures see the corresponding variable.
+</p>
+
+<p>A discussion of the Go change is <a href="https://Go.dev/blog/loopvar-preview">here</a>.</p>

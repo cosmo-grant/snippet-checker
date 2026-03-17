@@ -1,0 +1,22 @@
+<p>
+  In Ruby, <code>Hash#values</code> returns a new array of the receiver's values.
+</p>
+
+<p>
+  Like any other array, <code>vals</code> contains pointers to values, not the values themselves.
+  So it sees mutations to those values, no matter if the mutations are effected via <code>h</code>.
+  Apart from pointing at the same values, it is as independent of <code>h</code> as any other array.
+  So it does not see values added to <code>h</code>.
+</p>
+
+<p>
+  In Python, <code>dict.values()</code> returns a view object:
+  a dynamic proxy of the dictionary's values.
+</p>
+
+<p>
+  Sure, <code>vals</code> sees mutations to those values.
+  But so would <code>[d[k] for k in d]</code>,
+  since, like Ruby, lists contains pointers to values, not the values themselves.
+  What makes it dynamic is that it sees values added to <code>d</code> too.
+</p>
