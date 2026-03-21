@@ -92,7 +92,7 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
     fixed: list[Question] = []
     ignored: list[Question] = []
     questions = repository.get()
-    questions_to_check = [question for question in questions if question.check_formatting]
+    questions_to_check = [question for question in questions if question.check_format]
 
     print(f"Found {len(questions)} questions.")
     print(f"Will check {len(questions_to_check)}.")

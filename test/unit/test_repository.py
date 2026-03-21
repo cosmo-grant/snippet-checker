@@ -150,7 +150,7 @@ def test_note_to_question():
     assert q.given_output == "True"
     assert q.image == "python:3.13"
     assert q.check_output is True
-    assert q.check_formatting is True
+    assert q.check_format is True
     assert q.compress is True
     assert q.output_verbosity == 0
 
@@ -181,7 +181,7 @@ def test_note_to_question_respects_config_tags():
     ]
     q = note_to_question(note_type_configs, note)
     assert q.check_output is False
-    assert q.check_formatting is False
+    assert q.check_format is False
     assert q.compress is False
     assert q.output_verbosity == 2
 
@@ -249,7 +249,7 @@ def test_directory_repository_add_tag_creates_config(tmp_path):
         image="python:3.13",
         given_output="",
         check_output=True,
-        check_formatting=True,
+        check_format=True,
         output_verbosity=0,
         compress=False,
     )
@@ -271,7 +271,7 @@ def test_directory_repository_add_tag_idempotent(tmp_path):
         image="python:3.13",
         given_output="",
         check_output=True,
-        check_formatting=True,
+        check_format=True,
         output_verbosity=0,
         compress=False,
     )
@@ -292,7 +292,7 @@ def test_directory_repository_add_tag_merges_existing(tmp_path):
         image="python:3.13",
         given_output="",
         check_output=True,
-        check_formatting=True,
+        check_format=True,
         output_verbosity=0,
         compress=False,
     )

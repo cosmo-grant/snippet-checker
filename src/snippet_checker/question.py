@@ -22,7 +22,7 @@ class Question:
         image: str,
         given_output: str,
         check_output: bool,
-        check_formatting: bool,
+        check_format: bool,
         output_verbosity: int,
         compress: bool,
         review: bool = False,
@@ -47,7 +47,7 @@ class Question:
         else:
             raise ValueError(f"Cannot tell language from tag 'image:{image}'")
         self.check_output = check_output
-        self.check_formatting = check_formatting
+        self.check_format = check_format
         self.review = review
 
     def has_ok_output(self) -> bool:

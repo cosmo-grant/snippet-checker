@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 @dataclass
 class DirectoryConfig:
     images: dict[str, str] = field(default_factory=dict)
-    check_formatting: bool = True
+    check_format: bool = True
     check_output: bool = True
     output_verbosity: int = 1
     compress: bool = False
@@ -138,7 +138,7 @@ class DirectoryRepository(Repository):
                     image=config.images[snippet_path.suffix.removeprefix(".")],
                     given_output=output,
                     check_output=config.check_output,
-                    check_formatting=config.check_formatting,
+                    check_format=config.check_format,
                     output_verbosity=config.output_verbosity,
                     compress=config.compress,
                     review=config.review,
@@ -179,7 +179,7 @@ class DirectoryRepository(Repository):
         elif tag == Tag.NO_CHECK_OUTPUT:
             config["check_output"] = False
         elif tag == Tag.NO_CHECK_FORMAT:
-            config["check_formatting"] = False
+            config["check_format"] = False
         elif tag == Tag.NO_COMPRESS:
             config["compress"] = False
 
