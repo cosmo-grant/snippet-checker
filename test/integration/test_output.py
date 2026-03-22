@@ -43,6 +43,13 @@ class TestPythonOutput:
         snippet = PythonSnippet(code, "python:3.13")
         assert snippet.output.raw == "hello\n<~3s>\nworld\n"
 
+    # TODO: investigate
+    @pytest.mark.xfail
+    def test_carriage_return(self):
+        code = 'print("foo\\rbar")'
+        snippet = PythonSnippet(code, "python:3.13")
+        assert snippet.output.raw == "bar"
+
 
 class TestGoOutput:
     def test_hello(self):
