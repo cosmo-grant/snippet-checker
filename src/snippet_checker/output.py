@@ -31,17 +31,24 @@ class PythonOutput(Output):
     "A representation of a Python snippet's output."
 
     memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
+
     traceback_except_for_last_line = re.compile(
         r"Traceback \(most\ recent\ call\ last\):\n"  # start of traceback
         r"(\s.*\n)+",  # one or more lines starting with unicode whitespace and ending with newline
     )  # a traceback's last line doesn't start with whitespace so won't be captured
-    location_info = re.compile(r'  File "<string>", line.*\n')
+
+    # e.g. syntax errors include location info
+    location_info = re.compile(
+        r'  File "[^"]*", line.*\n'  # file and line number
+        r".*\n"  # line
+        r".*\n"  # carets
+    )
 
     @classmethod
     def normalise(cls, output: str, output_verbosity: int) -> str:
         normalised = cls.normalise_memory_addresses(output)
         normalised = cls.normalise_traceback(normalised, output_verbosity)
-        normalised = cls.normalise_location_info(normalised)
+        normalised = cls.normalise_location_info(normalised, output_verbosity)
 
         return normalised
 
@@ -71,8 +78,8 @@ class PythonOutput(Output):
         return normalised
 
     @classmethod
-    def normalise_location_info(cls, output: str) -> str:
-        normalised = re.sub(cls.location_info, "", output)
+    def normalise_location_info(cls, output: str, output_verbosity: int) -> str:
+        normalised = re.sub(cls.location_info, "", output) if output_verbosity < 2 else output
         return normalised
 
 

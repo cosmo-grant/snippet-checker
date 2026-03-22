@@ -37,6 +37,25 @@ class TestPythonNormalise:
 
         assert actual == expected
 
+    @mark.parametrize(
+        "output_verbosity, expected",
+        [
+            (0, "SyntaxError: no binding for nonlocal 'x' found\n"),
+            (1, "SyntaxError: no binding for nonlocal 'x' found\n"),
+            (
+                2,
+                "  File \"/tmp/main.py\", line 3\n    nonlocal x\n    ^^^^^^^^^^\nSyntaxError: no binding for nonlocal 'x' found\n",
+            ),
+        ],
+    )
+    def test_normalise_location_info(self, output_verbosity, expected):
+        actual = PythonOutput.normalise_location_info(
+            "  File \"/tmp/main.py\", line 3\n    nonlocal x\n    ^^^^^^^^^^\nSyntaxError: no binding for nonlocal 'x' found\n",
+            output_verbosity,
+        )
+
+        assert actual == expected
+
     def test_normalise_memory_address(self):
         actual = PythonOutput.normalise_memory_addresses(
             "<__main__.C object at 0x104cfa450>\n<__main__.D object at 0x104cfa5d0>\n<__main__.C object at 0x104cfa450>\n"
