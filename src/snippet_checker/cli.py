@@ -27,7 +27,9 @@ parser.add_argument("target", help="Directory or anki tag of the questions to ch
 
 def app() -> None:
     args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+    if args.verbose:
+        logging.basicConfig()
+        logging.getLogger("snippet_checker").setLevel(logging.DEBUG)
 
     repository: Repository
     if args.anki:
