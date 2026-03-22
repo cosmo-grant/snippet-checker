@@ -50,6 +50,18 @@ class TestPythonOutput:
         snippet = PythonSnippet(code, "python:3.13")
         assert snippet.output.raw == "bar"
 
+    # TODO: investigate
+    @pytest.mark.xfail
+    def test_unicode_normalization(self):
+        code = (
+            "from unicodedata import normalize\n"
+            's1 = "ca\N{LATIN SMALL LETTER N WITH TILDE}a\n'
+            's2 = "can\N{COMBINING TILDE}a\n'
+            "print(s1, s2)\n"
+        )
+        snippet = PythonSnippet(code, "python:3.13")
+        assert snippet.output.raw == "caña caña"
+
 
 class TestGoOutput:
     def test_hello(self):
