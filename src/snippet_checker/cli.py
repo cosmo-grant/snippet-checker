@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from .check_snippets import check_formatting, check_output
-from .config import get_anki_config
+from .config import AnkiConfig, DirectoryConfig, get_anki_config, get_directory_config
 from .repository import AnkiRepository, DirectoryRepository, Repository
 
 parser = ArgumentParser()
@@ -32,11 +32,14 @@ def app() -> None:
         logging.getLogger("snippet_checker").setLevel(logging.DEBUG)
 
     repository: Repository
+    config: DirectoryConfig | AnkiConfig
     if args.anki:
         config = get_anki_config()
         repository = AnkiRepository(config, args.target)
     else:
-        repository = DirectoryRepository(Path(args.target))
+        dir = Path(args.target)
+        config = get_directory_config(dir)
+        repository = DirectoryRepository(config, dir)
 
     func = check_output if args.command == "output" else check_formatting
     func(repository, args.mode)

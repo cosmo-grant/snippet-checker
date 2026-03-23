@@ -7,12 +7,10 @@ from typing import Any
 
 import pytest
 
-from snippet_checker.config import FieldConfig, NoteTypeConfig
+from snippet_checker.config import AnkiNoteConfig, DirectoryConfig, FieldConfig, NoteTypeConfig
 from snippet_checker.question import Question, Tag
 from snippet_checker.repository import (
-    AnkiNoteConfig,
     DirectoryRepository,
-    _find_config,
     escape_html,
     extract_target,
     note_to_question,
@@ -187,8 +185,6 @@ def test_note_to_question_respects_config_tags():
 
 
 def test_directory_repository_get(tmp_path):
-    (tmp_path / "snippet_checker.toml").write_text('[images]\npy = "python:3.13"\ngo = "golang:1.25"\n')
-
     q1 = tmp_path / "q1"
     q1.mkdir()
     (q1 / "snippet.py").write_text("print(1)")
@@ -198,7 +194,10 @@ def test_directory_repository_get(tmp_path):
     q2.mkdir(parents=True)
     (q2 / "main.go").write_text("package main")
 
-    repo = DirectoryRepository(tmp_path)
+    repo = DirectoryRepository(
+        DirectoryConfig(images={"py": "python:3.13", "go": "golang:1.25"}),
+        tmp_path,
+    )
     questions = repo.get()
 
     assert len(questions) == 2
@@ -217,14 +216,15 @@ def test_directory_repository_get(tmp_path):
 
 
 def test_directory_repository_per_question_config_overrides_root(tmp_path):
-    (tmp_path / "snippet_checker.toml").write_text('[images]\npy = "python:3.13"\ncheck_output = true\n')
-
     q1 = tmp_path / "q1"
     q1.mkdir()
     (q1 / "snippet.py").write_text("print(1)")
     (q1 / "snippet_checker.toml").write_text("check_output = false\n")
 
-    repo = DirectoryRepository(tmp_path)
+    repo = DirectoryRepository(
+        DirectoryConfig(images={"py": "python:3.13"}, check_output=True),
+        tmp_path,
+    )
     questions = repo.get()
 
     assert len(questions) == 1
@@ -232,12 +232,10 @@ def test_directory_repository_per_question_config_overrides_root(tmp_path):
 
 
 def test_directory_repository_multiple_snippets_raises(tmp_path):
-    (tmp_path / "snippet_checker.toml").write_text('[images]\npy = "python:3.13"\n')
-
     (tmp_path / "snippet.py").write_text("x = 1")
     (tmp_path / "main.py").write_text("y = 2")
 
-    repo = DirectoryRepository(tmp_path)
+    repo = DirectoryRepository(DirectoryConfig(images={"py": "python:3.13"}), tmp_path)
     with pytest.raises(Exception, match="multiple snippets"):
         repo.get()
 
@@ -254,7 +252,10 @@ def test_directory_repository_add_tag_creates_config(tmp_path):
         compress=False,
     )
 
-    repo = DirectoryRepository(tmp_path)
+    repo = DirectoryRepository(
+        DirectoryConfig(images={"py": "python:3.13"}),
+        tmp_path,
+    )
     repo.add_tag(question, Tag.REVIEW)
 
     with open(tmp_path / "snippet_checker.toml", "rb") as f:
@@ -275,7 +276,10 @@ def test_directory_repository_add_tag_idempotent(tmp_path):
         output_verbosity=0,
         compress=False,
     )
-    repo = DirectoryRepository(tmp_path)
+    repo = DirectoryRepository(
+        DirectoryConfig(images={"py": "python:3.13"}),
+        tmp_path,
+    )
     repo.add_tag(question, Tag.REVIEW)
 
     with open(tmp_path / "snippet_checker.toml", "rb") as f:
@@ -296,42 +300,13 @@ def test_directory_repository_add_tag_merges_existing(tmp_path):
         output_verbosity=0,
         compress=False,
     )
-    repo = DirectoryRepository(tmp_path)
+    repo = DirectoryRepository(
+        DirectoryConfig(images={"py": "python:3.13"}),
+        tmp_path,
+    )
     repo.add_tag(question, Tag.REVIEW)
 
     with open(tmp_path / "snippet_checker.toml", "rb") as f:
         config = tomllib.load(f)
 
     assert config == {"compress": True, "review": True}
-
-
-def test_find_config_in_given_directory(tmp_path):
-    config_file = tmp_path / "snippet_checker.toml"
-    config_file.touch()
-    assert _find_config(tmp_path) == config_file
-
-
-def test_find_config_in_parent_directory(tmp_path):
-    config_file = tmp_path / "snippet_checker.toml"
-    config_file.touch()
-    child = tmp_path / "child"
-    child.mkdir()
-    assert _find_config(child) == config_file
-
-
-def test_find_config_returns_none_when_no_config(tmp_path):
-    assert _find_config(tmp_path) is None
-
-
-def test_directory_repository_finds_config_in_parent(tmp_path):
-    (tmp_path / "snippet_checker.toml").write_text('[images]\npy = "python:3.13"\n')
-    child = tmp_path / "child"
-    child.mkdir()
-    (child / "snippet.py").write_text("print(1)")
-    (child / "output.txt").write_text("1\n")
-
-    repo = DirectoryRepository(child)
-    questions = repo.get()
-
-    assert len(questions) == 1
-    assert questions[0].image == "python:3.13"

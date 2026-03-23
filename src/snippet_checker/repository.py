@@ -4,40 +4,18 @@ import platform
 import re
 import tomllib
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import tomli_w
 from anki.storage import Collection
 
-from .config import AnkiConfig, NoteTypeConfig
+from .config import AnkiConfig, AnkiNoteConfig, DirectoryConfig, NoteTypeConfig
 from .question import Question, Tag
 
 if TYPE_CHECKING:
     from anki.notes import Note
-
-
-@dataclass
-class DirectoryConfig:
-    images: dict[str, str] = field(default_factory=dict)
-    check_format: bool = True
-    check_output: bool = True
-    output_verbosity: int = 1
-    compress: bool = False
-    review: bool = False
-
-
-class AnkiNoteConfig:
-    def __init__(self, tags: list[str]) -> None:
-        self.image = next(tag for tag in tags if tag.startswith("image:")).removeprefix("image:")
-        self.check_output = Tag.NO_CHECK_OUTPUT.value not in tags
-        self.check_format = Tag.NO_CHECK_FORMAT.value not in tags
-        try:
-            self.output_verbosity = int(next(tag for tag in tags if tag.startswith("output_verbosity:")).removeprefix("output_verbosity:"))
-        except StopIteration:
-            self.output_verbosity = 0
-        self.compress = Tag.NO_COMPRESS.value not in tags
 
 
 def note_to_question(note_type_configs: list[NoteTypeConfig], note: Note) -> Question:
@@ -80,26 +58,10 @@ class Repository(ABC):
         raise NotImplementedError
 
 
-def _find_config(start: Path) -> Path | None:
-    current = start.resolve()
-    while True:
-        candidate = current / "snippet_checker.toml"
-        if candidate.exists():
-            return candidate
-        if current.parent == current:
-            return None
-        current = current.parent
-
-
 class DirectoryRepository(Repository):
-    def __init__(self, dir: Path):
+    def __init__(self, config: DirectoryConfig, dir: Path):
+        self.config = config
         self.dir = dir
-        config_path = _find_config(dir)
-        if config_path is not None:
-            with open(config_path, "rb") as f:
-                self.root_config = DirectoryConfig(**tomllib.load(f))
-        else:
-            self.root_config = DirectoryConfig()
 
     def get(self) -> list[Question]:
         print(f"Looking for questions in directory '{self.dir}'.")
@@ -129,7 +91,7 @@ class DirectoryRepository(Repository):
                     question_config = tomllib.load(f)
             except FileNotFoundError:
                 question_config = {}
-            config = DirectoryConfig(**(asdict(self.root_config) | question_config))
+            config = DirectoryConfig(**(asdict(self.config) | question_config))
 
             questions.append(
                 Question(
