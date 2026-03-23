@@ -130,7 +130,7 @@ uv tool run snippet-checker output your_dir
 Check formatting:
 
 ```
-uv tool run snippet-checker --anki format your_dir
+uv tool run snippet-checker format your_dir
 ```
 
 Pass `--interactive` to fix interactively.
