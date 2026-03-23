@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 from enum import Enum
 from typing import Literal
 
 from .question import Question, Tag
 from .repository import Repository
 
+logger = logging.getLogger(__name__)
 Mode = Literal["check", "interactive", "fix"]
 
 
@@ -41,6 +43,7 @@ def check_output(repository: Repository, mode: Mode) -> int:
     print("----------")
 
     for question in questions_to_check:
+        logger.info(f"Checking {question.id} output")
         if not question.has_ok_output():
             print(f"\N{CROSS MARK} Bad output for {question.id}.", end="\n\n")
             print("Code:")
@@ -99,6 +102,7 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
     print("----------")
 
     for question in questions_to_check:
+        logger.info(f"Checking {question.id} format")
         formatted = question.snippet.format(compress=question.compress)
         if formatted is None:
             # error when trying to format snippet
