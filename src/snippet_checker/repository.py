@@ -234,7 +234,7 @@ class AnkiRepository(Repository):
     def add_tag(self, question: Question, tag: Tag) -> None:
         "Write a tag to the given question indicating special treatment, e.g. don't check output."
         note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        note.tags.append(tag.value)
+        note.tags.append("snip:" + tag.value)  # TODO: avoid scattered hard-coded "snip:"
         self.collection.update_note(note)
 
 
