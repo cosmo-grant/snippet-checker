@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from .check_snippets import check_formatting, check_output
-from .config import get_base_config
+from .config import get_anki_config
 from .repository import AnkiRepository, DirectoryRepository, Repository
 
 parser = ArgumentParser()
@@ -33,8 +33,8 @@ def app() -> None:
 
     repository: Repository
     if args.anki:
-        base_config = get_base_config()
-        repository = AnkiRepository(base_config, args.target)
+        config = get_anki_config()
+        repository = AnkiRepository(config, args.target)
     else:
         repository = DirectoryRepository(Path(args.target))
 

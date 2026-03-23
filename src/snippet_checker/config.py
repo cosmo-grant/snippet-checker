@@ -23,14 +23,14 @@ class NoteTypeConfig:
 
 
 @dataclass(frozen=True)
-class BaseConfig:
+class AnkiConfig:
     """Information required for checking an anki deck."""
 
     profile: str
     note_types: list[NoteTypeConfig]
 
 
-def get_base_config_path() -> Path:
+def get_anki_config_path() -> Path:
     xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
     xdg_config_file = (Path(xdg_config_home) / "snippet-checker" / "snippet-checker.toml") if xdg_config_home is not None else None
     home_config_file = Path(os.environ["HOME"]) / ".snippet-checker" / "snippet-checker.toml"
@@ -45,13 +45,13 @@ def get_base_config_path() -> Path:
     return config_path
 
 
-def get_base_config() -> BaseConfig:
-    config_path = get_base_config_path()
+def get_anki_config() -> AnkiConfig:
+    config_path = get_anki_config_path()
     with open(config_path, "rb") as f:
         raw = tomllib.load(f)
 
     # extra keys are ignored
-    return BaseConfig(
+    return AnkiConfig(
         profile=raw["profile"],
         note_types=[
             NoteTypeConfig(

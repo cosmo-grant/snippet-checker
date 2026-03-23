@@ -2,10 +2,10 @@ import re
 
 from pytest import raises
 
-from snippet_checker.config import BaseConfig, FieldConfig, NoteTypeConfig, get_base_config, get_base_config_path
+from snippet_checker.config import AnkiConfig, FieldConfig, NoteTypeConfig, get_anki_config, get_anki_config_path
 
 
-def test_get_base_config(monkeypatch, tmp_path):
+def test_get_anki_config(monkeypatch, tmp_path):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     xdg_config_dir = tmp_path / "snippet-checker"
     xdg_config_dir.mkdir()
@@ -23,7 +23,7 @@ pattern = "code_pattern"
 name = "output"
 pattern = "output_pattern"
 """)
-    assert get_base_config() == BaseConfig(
+    assert get_anki_config() == AnkiConfig(
         profile="jo",
         note_types=[
             NoteTypeConfig(
@@ -35,16 +35,16 @@ pattern = "output_pattern"
     )
 
 
-def test_get_base_config_path(tmp_path, monkeypatch):
+def test_get_anki_config_path(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     xdg_config_dir = tmp_path / "snippet-checker"
     xdg_config_dir.mkdir()
     (xdg_config_dir / "snippet-checker.toml").touch()
 
-    assert get_base_config_path() == xdg_config_dir / "snippet-checker.toml"
+    assert get_anki_config_path() == xdg_config_dir / "snippet-checker.toml"
 
 
-def test_get_base_config_path_no_xdg_file_but_home_file(tmp_path, monkeypatch):
+def test_get_anki_config_path_no_xdg_file_but_home_file(tmp_path, monkeypatch):
     # set up fake xdg_config_home and home
     fake_xdg_config_home = tmp_path / "xdg_config_home_dir"
     fake_xdg_config_home.mkdir()
@@ -58,10 +58,10 @@ def test_get_base_config_path_no_xdg_file_but_home_file(tmp_path, monkeypatch):
     home_config_dir.mkdir()
     (home_config_dir / "snippet-checker.toml").touch()
 
-    assert get_base_config_path() == home_config_dir / "snippet-checker.toml"
+    assert get_anki_config_path() == home_config_dir / "snippet-checker.toml"
 
 
-def test_get_base_config_path_no_xdg_config_home_but_home_file(tmp_path, monkeypatch):
+def test_get_anki_config_path_no_xdg_config_home_but_home_file(tmp_path, monkeypatch):
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     fake_home = tmp_path / "home_dir"
     fake_home.mkdir()
@@ -72,13 +72,13 @@ def test_get_base_config_path_no_xdg_config_home_but_home_file(tmp_path, monkeyp
     home_config_dir.mkdir()
     (home_config_dir / "snippet-checker.toml").touch()
 
-    assert get_base_config_path() == home_config_dir / "snippet-checker.toml"
+    assert get_anki_config_path() == home_config_dir / "snippet-checker.toml"
 
 
-def test_get_base_config_path_no_xdg_config_home_and_no_home_file(tmp_path, monkeypatch):
+def test_get_anki_config_path_no_xdg_config_home_and_no_home_file(tmp_path, monkeypatch):
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     fake_home = tmp_path / "home_dir"
     fake_home.mkdir()
     monkeypatch.setenv("HOME", str(fake_home))
     with raises(Exception, match="^No config found$"):  # FIXME: better error message
-        get_base_config_path()
+        get_anki_config_path()

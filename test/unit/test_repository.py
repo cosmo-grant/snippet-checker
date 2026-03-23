@@ -10,7 +10,7 @@ import pytest
 from snippet_checker.config import FieldConfig, NoteTypeConfig
 from snippet_checker.question import Question, Tag
 from snippet_checker.repository import (
-    AnkiConfig,
+    AnkiNoteConfig,
     DirectoryRepository,
     _find_config,
     escape_html,
@@ -94,7 +94,7 @@ def test_target_roundtrip(original):
 
 
 def test_anki_config_defaults():
-    config = AnkiConfig(["image:python:3.13"])
+    config = AnkiNoteConfig(["image:python:3.13"])
     assert config.image == "python:3.13"
     assert config.check_output is True
     assert config.check_format is True
@@ -103,7 +103,7 @@ def test_anki_config_defaults():
 
 
 def test_anki_config_flags_override_defaults():
-    config = AnkiConfig(["image:golang:1.25", "no_check_output", "no_check_format", "output_verbosity:2", "no_compress"])
+    config = AnkiNoteConfig(["image:golang:1.25", "no_check_output", "no_check_format", "output_verbosity:2", "no_compress"])
     assert config.image == "golang:1.25"
     assert config.check_output is False
     assert config.check_format is False

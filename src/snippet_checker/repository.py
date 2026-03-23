@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import tomli_w
 from anki.storage import Collection
 
-from .config import BaseConfig, NoteTypeConfig
+from .config import AnkiConfig, NoteTypeConfig
 from .question import Question, Tag
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ class DirectoryConfig:
     review: bool = False
 
 
-class AnkiConfig:
+class AnkiNoteConfig:
     def __init__(self, tags: list[str]) -> None:
         self.image = next(tag for tag in tags if tag.startswith("image:")).removeprefix("image:")
         self.check_output = Tag.NO_CHECK_OUTPUT.value not in tags
@@ -49,7 +49,7 @@ def note_to_question(note_type_configs: list[NoteTypeConfig], note: Note) -> Que
     code = extract_target(note_type_config.code_field.pattern, code_field)
     output = extract_target(note_type_config.output_field.pattern, output_field)
     tags = [tag.removeprefix("snip:") for tag in note.tags if tag.startswith("snip:")]
-    note_config = AnkiConfig(tags)
+    note_config = AnkiNoteConfig(tags)
     return Question(
         note.id,
         code,
@@ -188,14 +188,14 @@ class DirectoryRepository(Repository):
 
 
 class AnkiRepository(Repository):
-    def __init__(self, base_config: BaseConfig, tag: str):
+    def __init__(self, config: AnkiConfig, tag: str):
         system = platform.system()
         if system == "Linux":
-            path = Path.home() / f".local/share/Anki2/{base_config.profile}/collection.anki2"
+            path = Path.home() / f".local/share/Anki2/{config.profile}/collection.anki2"
         else:  # mac
-            path = Path.home() / f"Library/Application Support/Anki2/{base_config.profile}/collection.anki2"
+            path = Path.home() / f"Library/Application Support/Anki2/{config.profile}/collection.anki2"
 
-        self.base_config = base_config
+        self.config = config
         self.collection = Collection(str(path))
         self.tag = tag
 
@@ -204,14 +204,14 @@ class AnkiRepository(Repository):
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
         self.notes = [note for note in notes if self.tag in note.tags]
-        return [note_to_question(self.base_config.note_types, note) for note in self.notes]
+        return [note_to_question(self.config.note_types, note) for note in self.notes]
 
     def fix_output(self, question: Question) -> None:
         "Write the normalised, marked up output of the given question's snippet to the anki database."
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         normalised = question.snippet.output.normalise(question.snippet.output.raw, question.output_verbosity)
-        note_type_config = next(config for config in self.base_config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
+        note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
         index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.output_field.name)
         current = note.fields[index]
         fixed = replace_target(note_type_config.output_field.pattern, current, escape_html(normalised))
@@ -224,7 +224,7 @@ class AnkiRepository(Repository):
         formatted = question.snippet.format(compress=question.compress)
         assert formatted is not None  # we only fix if no error when formatting
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        note_type_config = next(config for config in self.base_config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
+        note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
         index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.code_field.name)
         current = note.fields[index]
         fixed = replace_target(note_type_config.code_field.pattern, current, formatted)
