@@ -50,7 +50,7 @@ class Question:
             self.snippet = RustSnippet(code, image)
             self.output_normaliser = RubyOutputNormaliser
         else:
-            raise ValueError(f"Cannot tell language from tag 'image:{image}'")
+            raise ValueError(f"Cannot tell language from image '{image}'")
         self.check_output = check_output
         self.check_format = check_format
         self.review = review
