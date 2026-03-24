@@ -114,3 +114,46 @@ pattern = "output_pattern"
             ),
         ],
     )
+
+
+def test_anki_config_exception_if_both_profile_and_path(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    xdg_config_dir = tmp_path / "snippet-checker"
+    xdg_config_dir.mkdir()
+    (xdg_config_dir / "snippet-checker.toml").write_text("""\
+profile = "jo"
+collection_path = "/path/to/collection"
+
+[[notes]]
+note_type = "code_output"
+
+[notes.code_field]
+name = "code"
+pattern = "code_pattern"
+
+[notes.output_field]
+name = "output"
+pattern = "output_pattern"
+""")
+    with raises(Exception, match="^Cannot set both profile and collection path$"):
+        get_anki_config()
+
+
+def test_anki_config_exception_if_neither_profile_nor_path(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    xdg_config_dir = tmp_path / "snippet-checker"
+    xdg_config_dir.mkdir()
+    (xdg_config_dir / "snippet-checker.toml").write_text("""\
+[[notes]]
+note_type = "code_output"
+
+[notes.code_field]
+name = "code"
+pattern = "code_pattern"
+
+[notes.output_field]
+name = "output"
+pattern = "output_pattern"
+""")
+    with raises(Exception, match="^Must set either profile or collection path$"):
+        get_anki_config()

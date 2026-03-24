@@ -60,8 +60,15 @@ class NoteTypeConfig:
 class AnkiConfig:
     """Information required for checking an anki deck."""
 
-    profile: str
     note_types: list[NoteTypeConfig]
+    profile: str | None = None
+    collection_path: Path | None = None
+
+    def __post_init__(self):
+        if self.profile is None and self.collection_path is None:
+            raise Exception("Must set either profile or collection path")
+        if self.profile is not None and self.collection_path is not None:
+            raise Exception("Cannot set both profile and collection path")
 
 
 def get_anki_config_path() -> Path:
@@ -86,7 +93,8 @@ def get_anki_config() -> AnkiConfig:
 
     # extra keys are ignored
     return AnkiConfig(
-        profile=raw["profile"],
+        profile=raw.get("profile"),
+        collection_path=Path(raw["collection_path"]) if "collection_path" in raw else None,
         note_types=[
             NoteTypeConfig(
                 name=note_config["note_type"],

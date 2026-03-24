@@ -151,11 +151,17 @@ class DirectoryRepository(Repository):
 
 class AnkiRepository(Repository):
     def __init__(self, config: AnkiConfig, tag: str):
-        system = platform.system()
-        if system == "Linux":
-            path = Path.home() / f".local/share/Anki2/{config.profile}/collection.anki2"
-        else:  # mac
-            path = Path.home() / f"Library/Application Support/Anki2/{config.profile}/collection.anki2"
+        assert (config.profile is not None and config.collection_path is None) or (
+            config.profile is None and config.collection_path is not None
+        )
+        if config.profile is not None:
+            system = platform.system()
+            if system == "Linux":
+                path = Path.home() / f".local/share/Anki2/{config.profile}/collection.anki2"
+            else:  # mac
+                path = Path.home() / f"Library/Application Support/Anki2/{config.profile}/collection.anki2"
+        if config.collection_path is not None:
+            path = config.collection_path
 
         self.config = config
         self.collection = Collection(str(path))
