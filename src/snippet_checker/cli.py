@@ -1,4 +1,5 @@
 import logging
+import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -25,7 +26,7 @@ parser.add_argument("command", choices=["output", "format"], help="Command to ru
 parser.add_argument("target", help="Directory or anki tag of the questions to check.")
 
 
-def app() -> None:
+def app() -> int:
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig()
@@ -42,8 +43,8 @@ def app() -> None:
         repository = DirectoryRepository(config, dir)
 
     func = check_output if args.command == "output" else check_formatting
-    func(repository, args.mode)
+    return func(repository, args.mode)
 
 
 if __name__ == "__main__":
-    app()
+    sys.exit(app())
