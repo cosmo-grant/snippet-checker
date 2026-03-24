@@ -50,6 +50,6 @@ class Question:
         self.check_format = check_format
         self.review = review
 
-    def has_ok_output(self) -> bool:
-        normalised = self.snippet.output.normalise(self.snippet.output.raw, self.output_verbosity)
-        return normalised == self.given_output
+    def normalised_actual_output(self):
+        actual_output = self.snippet.output()
+        return actual_output.normalise(actual_output.raw, output_verbosity=self.output_verbosity)

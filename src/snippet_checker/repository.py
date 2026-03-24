@@ -46,11 +46,11 @@ class Repository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fix_output(self, question: Question) -> None:
+    def write_output(self, question: Question, output: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def fix_formatting(self, question: Question) -> None:
+    def write_code(self, question: Question, code: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -109,20 +109,13 @@ class DirectoryRepository(Repository):
 
         return questions
 
-    def fix_output(self, question: Question) -> None:
-        "Write the normalised output of the given question's snippet to disk, overwriting the existing output."
+    def write_output(self, question: Question, output: str) -> None:
         assert isinstance(question.id, Path)
-        normalised = question.snippet.output.normalise(question.snippet.output.raw, question.output_verbosity)
-        with open(question.id.parent / "output.txt", "w") as f:
-            f.write(normalised)
+        (question.id.parent / "output.txt").write_text(output)
 
-    def fix_formatting(self, question: Question) -> None:
-        "Write a formatted version of the given question's snippet to disk, overwriting the existing snippet."
+    def write_code(self, question: Question, code: str) -> None:
         assert isinstance(question.id, Path)
-        formatted = question.snippet.format(compress=question.compress)
-        assert formatted is not None  # we only fix if no error when formatting
-        with open(question.id, "w") as f:
-            f.write(formatted)
+        question.id.write_text(code)
 
     def add_tag(self, question: Question, tag: Tag) -> None:
         """Write a tag to snippet_checker.toml in the question's directory.
@@ -174,28 +167,25 @@ class AnkiRepository(Repository):
         self.notes = [note for note in notes if self.tag in note.tags]
         return [note_to_question(self.config.note_types, note) for note in self.notes]
 
-    def fix_output(self, question: Question) -> None:
-        "Write the normalised, marked up output of the given question's snippet to the anki database."
+    def write_output(self, question: Question, output: str) -> None:
+        "Replace the question's output field target by the given string."
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        normalised = question.snippet.output.normalise(question.snippet.output.raw, question.output_verbosity)
         note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
         index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.output_field.name)
         current = note.fields[index]
-        fixed = replace_target(note_type_config.output_field.pattern, current, escape_html(normalised))
+        fixed = replace_target(note_type_config.output_field.pattern, current, escape_html(output))
         note.fields[index] = fixed
         self.collection.update_note(note)
 
-    def fix_formatting(self, question) -> None:
-        "Write a formatted version of the given question's snippet to the anki database."
+    def write_code(self, question, code: str) -> None:
+        "Replace the question's code field target by the given string."
         assert isinstance(question.id, int)
-        formatted = question.snippet.format(compress=question.compress)
-        assert formatted is not None  # we only fix if no error when formatting
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
         index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.code_field.name)
         current = note.fields[index]
-        fixed = replace_target(note_type_config.code_field.pattern, current, formatted)
+        fixed = replace_target(note_type_config.code_field.pattern, current, code)
         note.fields[index] = fixed
         self.collection.update_note(note)
 

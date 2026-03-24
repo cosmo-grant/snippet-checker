@@ -44,20 +44,20 @@ def check_output(repository: Repository, mode: Mode) -> int:
 
     for question in questions_to_check:
         logger.info(f"Checking {question.id} output")
-        if not question.has_ok_output():
+        normalised_actual_output = question.normalised_actual_output()
+        if normalised_actual_output != question.given_output:
             print(f"\N{CROSS MARK} Bad output for {question.id}.", end="\n\n")
             print("Code:")
             colour_print(question.snippet.code, colour="cyan", end="\n\n")
             print("Output (normalised):")
-            normalised = question.snippet.output.normalise(question.snippet.output.raw, output_verbosity=question.output_verbosity)
-            colour_print(normalised, colour="green", end="\n\n")
+            colour_print(normalised_actual_output, colour="green", end="\n\n")
             print("Given:")
             colour_print(question.given_output, colour="red")
             failed.append(question)
             if mode == "interactive":
                 response = get_user_input()
                 if response == UserInput.REPLACE:
-                    repository.fix_output(question)
+                    repository.write_output(question, normalised_actual_output)
                     fixed.append(question)
                     print("\N{SPARKLES} Replaced.")
                 elif response == UserInput.IGNORE:
@@ -70,7 +70,7 @@ def check_output(repository: Repository, mode: Mode) -> int:
                 else:
                     print("\N{FACE WITHOUT MOUTH} Moving on.")
             elif mode == "fix":
-                repository.fix_output(question)
+                repository.write_output(question, normalised_actual_output)
                 fixed.append(question)
                 print("\N{SPARKLES} Auto-fixed.")
             print("----------")
@@ -122,7 +122,7 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
             if mode == "interactive":
                 response = get_user_input()
                 if response == UserInput.REPLACE:
-                    repository.fix_formatting(question)
+                    repository.write_code(question, formatted)
                     fixed.append(question)
                     print("\N{SPARKLES} Replaced.")
                 elif response == UserInput.IGNORE:
@@ -135,7 +135,7 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
                 else:
                     print("\N{FACE WITHOUT MOUTH} Moving on.")
             elif mode == "fix":
-                repository.fix_formatting(question)
+                repository.write_code(question, formatted)
                 fixed.append(question)
                 print("\N{SPARKLES} Auto-fixed.")
             print("----------")

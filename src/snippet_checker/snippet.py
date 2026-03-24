@@ -7,7 +7,6 @@ import platform
 import tarfile
 import time
 from abc import ABC, abstractmethod
-from functools import cached_property
 from pathlib import Path
 from typing import ClassVar
 
@@ -103,7 +102,6 @@ class Snippet(ABC):
         self.image = image
         self.executor = DockerExecutor()
 
-    @cached_property
     @abstractmethod
     def output(self) -> Output:
         raise NotImplementedError
@@ -116,7 +114,6 @@ class Snippet(ABC):
 class PythonSnippet(Snippet):
     "A Python code snippet."
 
-    @cached_property
     def output(self) -> PythonOutput:
         dest = Path("/tmp/main.py")
         self.executor.write(self.image, self.code, dest)
@@ -149,7 +146,6 @@ class PythonSnippet(Snippet):
 class GoSnippet(Snippet):
     "A Go code snippet."
 
-    @cached_property
     def output(self) -> GoOutput:
         dest = Path("/tmp/main.go")
         self.executor.write(self.image, self.code, dest)
@@ -179,7 +175,6 @@ class GoSnippet(Snippet):
 class NodeSnippet(Snippet):
     "A Node code snippet."
 
-    @cached_property
     def output(self) -> NodeOutput:
         dest = Path("/tmp/main.js")
         self.executor.write(self.image, self.code, dest)
@@ -205,7 +200,6 @@ class NodeSnippet(Snippet):
 class RubySnippet(Snippet):
     "A Ruby code snippet."
 
-    @cached_property
     def output(self) -> RubyOutput:
         dest = Path("/tmp/main.rb")
         self.executor.write(self.image, self.code, dest)
@@ -231,7 +225,6 @@ class RubySnippet(Snippet):
 class RustSnippet(Snippet):
     "A Rust code snippet."
 
-    @cached_property
     def output(self) -> RustOutput:
         dest = Path("/tmp/main.rs")
         self.executor.write(self.image, self.code, dest)
