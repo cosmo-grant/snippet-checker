@@ -1,9 +1,9 @@
 from pytest import mark
 
-from snippet_checker.output import NodeOutput, PythonOutput
+from snippet_checker.normaliser import NodeOutputNormaliser, PythonOutputNormaliser
 
 
-class TestPythonNormalise:
+class TestPythonOutputNormaliser:
     @mark.parametrize(
         "output_verbosity, expected",
         [
@@ -26,7 +26,7 @@ class TestPythonNormalise:
         ],
     )
     def test_normalise_traceback(self, output_verbosity, expected):
-        actual = PythonOutput.normalise_traceback(
+        actual = PythonOutputNormaliser.normalise_traceback(
             "Traceback (most recent call last):\n"
             '  File "<string>", line 1, in <module>\n'
             "    1 / 0\n"
@@ -49,7 +49,7 @@ class TestPythonNormalise:
         ],
     )
     def test_normalise_location_info(self, output_verbosity, expected):
-        actual = PythonOutput.normalise_location_info(
+        actual = PythonOutputNormaliser.normalise_location_info(
             "  File \"/tmp/main.py\", line 3\n    nonlocal x\n    ^^^^^^^^^^\nSyntaxError: no binding for nonlocal 'x' found\n",
             output_verbosity,
         )
@@ -57,7 +57,7 @@ class TestPythonNormalise:
         assert actual == expected
 
     def test_normalise_memory_address(self):
-        actual = PythonOutput.normalise_memory_addresses(
+        actual = PythonOutputNormaliser.normalise_memory_addresses(
             "<__main__.C object at 0x104cfa450>\n<__main__.D object at 0x104cfa5d0>\n<__main__.C object at 0x104cfa450>\n"
         )
         expected = "<__main__.C object at 0x100>\n<__main__.D object at 0x200>\n<__main__.C object at 0x100>\n"
@@ -65,7 +65,7 @@ class TestPythonNormalise:
         assert actual == expected
 
 
-class TestNodeNormalise:
+class TestNodeNormaliser:
     @mark.parametrize(
         "output_verbosity, expected",
         [
@@ -76,7 +76,7 @@ class TestNodeNormalise:
         ],
     )
     def test_normalise_traceback(self, output_verbosity, expected):
-        actual = NodeOutput.normalise_traceback(
+        actual = NodeOutputNormaliser.normalise_traceback(
             "/tmp/main.js:2\n"
             "console.log(x)\n"
             "            ^\n"

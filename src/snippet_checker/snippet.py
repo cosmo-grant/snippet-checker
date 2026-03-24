@@ -12,8 +12,6 @@ from typing import ClassVar
 
 import docker
 
-from .output import GoOutput, NodeOutput, Output, PythonOutput, RubyOutput, RustOutput
-
 logger = logging.getLogger(__name__)
 
 
@@ -81,7 +79,8 @@ class DockerExecutor:
         command: list[str],
         environment: dict[str, str] | None = None,
         workdir: str | None = None,
-    ) -> list[tuple[float, bytes]]:
+    ) -> str:
+        "Run the given command in a container, returning a string representing the timed output."
         container = self._get_container(image)
         logs: list[tuple[float, bytes]] = []
         previous = time.perf_counter()  # must come after getting the container
@@ -91,7 +90,21 @@ class DockerExecutor:
             logs.append((now - previous, chunk))
             previous = now
 
-        return logs
+        return to_string(logs)
+
+
+def to_string(logs: list[tuple[float, bytes]]) -> str:
+    "Return a string constructed from timed docker logs."
+    output = b""
+    for delta, char in logs:
+        rounded_delta = round(delta)
+        if rounded_delta == 0:
+            output += char
+        else:
+            output += bytes(f"<~{rounded_delta}s>\n", "utf-8")
+            output += char
+
+    return output.decode("utf-8").replace("\r\n", "\n")
 
 
 class Snippet(ABC):
@@ -103,7 +116,7 @@ class Snippet(ABC):
         self.executor = DockerExecutor()
 
     @abstractmethod
-    def output(self) -> Output:
+    def output(self) -> str:
         raise NotImplementedError
 
     @abstractmethod
@@ -114,10 +127,10 @@ class Snippet(ABC):
 class PythonSnippet(Snippet):
     "A Python code snippet."
 
-    def output(self) -> PythonOutput:
+    def output(self) -> str:
         dest = Path("/tmp/main.py")
         self.executor.write(self.image, self.code, dest)
-        logs = self.executor.exec_run_timed(
+        return self.executor.exec_run_timed(
             self.image,
             ["python", str(dest)],
             environment={
@@ -125,8 +138,6 @@ class PythonSnippet(Snippet):
                 "PYTHONWARNINGS": "ignore",
             },
         )
-
-        return PythonOutput(logs)
 
     def format(self, compress: bool) -> str | None:
         dest = Path("/tmp/main.py")
@@ -146,7 +157,7 @@ class PythonSnippet(Snippet):
 class GoSnippet(Snippet):
     "A Go code snippet."
 
-    def output(self) -> GoOutput:
+    def output(self) -> str:
         dest = Path("/tmp/main.go")
         self.executor.write(self.image, self.code, dest)
         self.executor.exec_run(
@@ -154,8 +165,7 @@ class GoSnippet(Snippet):
             ["go", "build", str(dest)],
             workdir="/tmp",
         )
-        logs = self.executor.exec_run_timed(self.image, ["/tmp/main"])
-        return GoOutput(logs)
+        return self.executor.exec_run_timed(self.image, ["/tmp/main"])
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.go")
@@ -175,12 +185,10 @@ class GoSnippet(Snippet):
 class NodeSnippet(Snippet):
     "A Node code snippet."
 
-    def output(self) -> NodeOutput:
+    def output(self) -> str:
         dest = Path("/tmp/main.js")
         self.executor.write(self.image, self.code, dest)
-        logs = self.executor.exec_run_timed(self.image, ["node", str(dest)], environment={"NO_COLOR": "1"})
-
-        return NodeOutput(logs)
+        return self.executor.exec_run_timed(self.image, ["node", str(dest)], environment={"NO_COLOR": "1"})
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.js")
@@ -200,12 +208,10 @@ class NodeSnippet(Snippet):
 class RubySnippet(Snippet):
     "A Ruby code snippet."
 
-    def output(self) -> RubyOutput:
+    def output(self) -> str:
         dest = Path("/tmp/main.rb")
         self.executor.write(self.image, self.code, dest)
-        logs = self.executor.exec_run_timed(self.image, ["ruby", str(dest)])
-
-        return RubyOutput(logs)
+        return self.executor.exec_run_timed(self.image, ["ruby", str(dest)])
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.rb")
@@ -225,12 +231,11 @@ class RubySnippet(Snippet):
 class RustSnippet(Snippet):
     "A Rust code snippet."
 
-    def output(self) -> RustOutput:
+    def output(self) -> str:
         dest = Path("/tmp/main.rs")
         self.executor.write(self.image, self.code, dest)
         self.executor.exec_run(self.image, ["rustc", "main.rs"], workdir="/tmp")
-        logs = self.executor.exec_run_timed(self.image, ["/tmp/main"])
-        return RustOutput(logs)
+        return self.executor.exec_run_timed(self.image, ["/tmp/main"])
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.rs")

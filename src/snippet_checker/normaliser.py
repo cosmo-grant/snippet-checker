@@ -5,31 +5,13 @@ from abc import ABC, abstractmethod
 from itertools import count
 
 
-class Output(ABC):
-    def __init__(self, logs: list[tuple[float, bytes]]):
-        output = self._to_string(logs)
-        self.raw = output
-
+class OutputNormaliser(ABC):
     @abstractmethod
     def normalise(self, output: str, output_verbosity: int) -> str:
         raise NotImplementedError
 
-    def _to_string(self, logs: list[tuple[float, bytes]]) -> str:
-        output = b""
-        for delta, char in logs:
-            rounded_delta = round(delta)
-            if rounded_delta == 0:
-                output += char
-            else:
-                output += bytes(f"<~{rounded_delta}s>\n", "utf-8")
-                output += char
 
-        return output.decode("utf-8").replace("\r\n", "\n")
-
-
-class PythonOutput(Output):
-    "A representation of a Python snippet's output."
-
+class PythonOutputNormaliser(OutputNormaliser):
     memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
 
     traceback_except_for_last_line = re.compile(
@@ -83,9 +65,7 @@ class PythonOutput(Output):
         return normalised
 
 
-class GoOutput(Output):
-    "A representation of a Go snippet's output."
-
+class GoOutputNormaliser(OutputNormaliser):
     memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
     panic = re.compile(
         r"(panic: .*?\n)"  # the line we want
@@ -133,9 +113,7 @@ class GoOutput(Output):
         return normalised
 
 
-class NodeOutput(Output):
-    "A representation of a Node snippet's output."
-
+class NodeOutputNormaliser(OutputNormaliser):
     traceback = re.compile(
         r"(?P<location>/tmp/main.js:\d+\n)"
         r"(?P<offending_line>.*\n)"
@@ -163,17 +141,13 @@ class NodeOutput(Output):
         return normalised
 
 
-class RubyOutput(Output):
-    "A representation of a Ruby snippet's output."
-
+class RubyOutputNormaliser(OutputNormaliser):
     @classmethod
     def normalise(cls, output: str, output_verbosity: int) -> str:
         return output  # TODO:
 
 
-class RustOutput(Output):
-    "A representation of a Rust snippet's output."
-
+class RustOutput(OutputNormaliser):
     @classmethod
     def normalise(cls, output: str, output_verbosity: int) -> str:
         return output  # TODO:
