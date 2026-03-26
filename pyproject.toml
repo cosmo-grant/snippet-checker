@@ -1,14 +1,27 @@
 [project]
 name = "snippet-checker"
 version = "0.1.0"
-description = "Check the output and formatting of code snippets"
+authors = [
+    {name="Cosmo Grant", email="cosmodgrant@gmail.com"},
+]
+description = "Check code snippets in anki or files via docker."
 readme = "README.md"
 requires-python = ">=3.13"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX",
+  "Operating System :: MacOS",
+]
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "anki>=25.9.2",
     "docker>=7.1.0",
     "tomli-w>=1.1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/cosmo-grant/snippet-checker"
 
 [project.scripts]
 snippet-checker = "snippet_checker.cli:app"
