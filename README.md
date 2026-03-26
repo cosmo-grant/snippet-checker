@@ -62,13 +62,13 @@ In anki:
 Check outputs:
 
 ```
-uv tool run snippet-checker --anki output check_me
+snippet-checker --anki output check_me
 ```
 
 Check formatting:
 
 ```
-uv tool run snippet-checker --anki format check_me
+snippet-checker --anki format check_me
 ```
 
 Pass `--interactive` to fix interactively.
@@ -124,13 +124,13 @@ go = "golang:1.21"
 Check outputs:
 
 ```
-uv tool run snippet-checker output your_dir
+snippet-checker output your_dir
 ```
 
 Check formatting:
 
 ```
-uv tool run snippet-checker format your_dir
+snippet-checker format your_dir
 ```
 
 Pass `--interactive` to fix interactively.
