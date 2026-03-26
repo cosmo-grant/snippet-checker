@@ -187,7 +187,7 @@ def test_note_to_question_respects_config_tags():
 def test_directory_repository_get(tmp_path):
     q1 = tmp_path / "q1"
     q1.mkdir()
-    (q1 / "snippet.py").write_text("print(1)")
+    (q1 / "main.py").write_text("print(1)")
     (q1 / "output.txt").write_text("1\n")
 
     q2 = tmp_path / "nested" / "q2"
@@ -202,7 +202,7 @@ def test_directory_repository_get(tmp_path):
 
     assert len(questions) == 2
 
-    py_q = next(q for q in questions if q.id == q1 / "snippet.py")
+    py_q = next(q for q in questions if q.id == q1 / "main.py")
     go_q = next(q for q in questions if q.id == q2 / "main.go")
 
     assert py_q.snippet.code == "print(1)"
@@ -218,7 +218,7 @@ def test_directory_repository_get(tmp_path):
 def test_directory_repository_per_question_config_overrides_root(tmp_path):
     q1 = tmp_path / "q1"
     q1.mkdir()
-    (q1 / "snippet.py").write_text("print(1)")
+    (q1 / "main.py").write_text("print(1)")
     (q1 / "snippet_checker.toml").write_text("check_output = false\n")
 
     repo = DirectoryRepository(
@@ -232,8 +232,8 @@ def test_directory_repository_per_question_config_overrides_root(tmp_path):
 
 
 def test_directory_repository_multiple_snippets_raises(tmp_path):
-    (tmp_path / "snippet.py").write_text("x = 1")
-    (tmp_path / "main.py").write_text("y = 2")
+    (tmp_path / "main.py").write_text("x = 1")
+    (tmp_path / "main.js").write_text("y = 2")
 
     repo = DirectoryRepository(DirectoryConfig(images={"py": "python:3.13"}), tmp_path)
     with pytest.raises(Exception, match="multiple snippets"):

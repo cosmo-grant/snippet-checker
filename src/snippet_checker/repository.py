@@ -68,7 +68,7 @@ class DirectoryRepository(Repository):
 
         questions: list[Question] = []
         for dirpath, _, _ in self.dir.walk():
-            snippet_paths = list(dirpath.glob("snippet.*")) + list(dirpath.glob("main.*"))
+            snippet_paths = list(dirpath.glob("main.*"))
             if len(snippet_paths) == 0:
                 continue
             elif len(snippet_paths) > 1:
