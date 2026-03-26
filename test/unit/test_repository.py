@@ -232,10 +232,10 @@ def test_directory_repository_per_question_config_overrides_root(tmp_path):
 
 
 def test_directory_repository_multiple_snippets_raises(tmp_path):
-    (tmp_path / "main.py").write_text("x = 1")
-    (tmp_path / "main.js").write_text("y = 2")
+    (tmp_path / "main.py").touch()
+    (tmp_path / "main.js").touch()
 
-    repo = DirectoryRepository(DirectoryConfig(images={"py": "python:3.13"}), tmp_path)
+    repo = DirectoryRepository(DirectoryConfig(), tmp_path)
     with pytest.raises(Exception, match="multiple snippets"):
         repo.get()
 
