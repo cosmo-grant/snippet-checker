@@ -46,7 +46,7 @@ pattern = "(?s)^<pre><samp>(?P<target>.*)</samp></pre>$"
 In anki:
 - add a tag to the notes you want to check
   - e.g. `check_me`
-- add suitable tags `snip:image:<image tag>` to the notes which have snippets
+- add tags `snip:image:<image tag>` to the notes which have snippets
   - e.g. `snip:image:python:3.13`
   - sets the image in which the tool runs that note's snippet
   - the image is pulled via `docker image pull <image tag>`
@@ -183,7 +183,7 @@ done
 Timing matters, so it's included in the output.
 Gaps are rounded to the nearest second,
 are only included if at least 1s after rounding,
-and are always included in the form "<~Xs>".
+and are included in the form "<~Xs>".
 
 ### Normalising exceptions
 
@@ -270,18 +270,17 @@ Some examples.
 `snippet-checker` can't handle
 
 ```python
+# assume my_file.txt is "first\nsecond\nthird\n"
 with open("my_file.txt") as f:
     for x in f:
         print(x)
-
-# assuming my_file.txt is "first\nsecond\nthird"
 ```
 
 but we can adapt the snippet to something it can handle:
 
 ```python
 with open("my_file.txt", "w") as f:
-    f.write("first\nsecond\nthird"
+    f.write("first\nsecond\nthird\n"
 
 with open("my_file.txt") as f:
     for x in f:
@@ -321,7 +320,7 @@ I'm thinking about how to make this customizable.
 
 ### What's no_compress?
 
-`ruff` likes double blank lines, e.g. between class definitions.
+Some formatters like double blank lines, e.g. between class definitions.
 But space is at a premium in anki notes.
-So by default double blanks are replaced by single blanks after formatting.
-If you don't want this add a `snip:no_compress` tag.
+So by default when formatting anki double blanks are replaced by single blanks.
+To keep double blanks add a `snip:no_compress` tag.
