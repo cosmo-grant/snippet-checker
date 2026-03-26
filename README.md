@@ -31,7 +31,7 @@ name = "Code"
 # The pattern should be a Python regex with a group named "target", which matches just the code.
 # The pattern below works for fields like '<pre><code class="lang-python">print(1 + 1)</code></pre>'.
 # The markup is added back when the tool writes to anki.
-pattern = '(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$'
+pattern = '(?s)^<pre><code class="lang-\w+?">(?P<target>.*)</code></pre>$'
 
 # The field containing the output.
 [notes.output_field]
