@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import Literal
 
@@ -42,9 +43,11 @@ def check_output(repository: Repository, mode: Mode) -> int:
     print(f"Will check {len(questions_to_check)}.")
     print("----------")
 
-    for question in questions_to_check:
-        logger.info(f"Checking {question.id} output")
-        normalised_actual_output = question.normalised_actual_output()
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(question.normalised_actual_output) for question in questions_to_check]
+
+    for question, future in zip(questions_to_check, futures, strict=True):
+        normalised_actual_output = future.result()
         if normalised_actual_output != question.given_output:
             print(f"\N{CROSS MARK} Bad output for {question.id}.", end="\n\n")
             print("Code:")
@@ -101,9 +104,11 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
     print(f"Will check {len(questions_to_check)}.")
     print("----------")
 
-    for question in questions_to_check:
-        logger.info(f"Checking {question.id} format")
-        formatted = question.snippet.format(compress=question.compress)
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(question.snippet.format, compress=question.compress) for question in questions_to_check]
+
+    for question, future in zip(questions_to_check, futures, strict=True):
+        formatted = future.result()
         if formatted is None:
             # error when trying to format snippet
             # treat as non-fixable failure
