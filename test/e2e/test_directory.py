@@ -4,7 +4,7 @@ import subprocess
 
 def test_check_directory_output_ok():
     proc = subprocess.run(
-        ["uv", "tool", "run", "snippet-checker", "output", "test/e2e/snippets"],
+        ["snippet-checker", "output", "test/e2e/snippets"],
         timeout=120,
         capture_output=True,
         text=True,
@@ -17,7 +17,7 @@ def test_check_directory_output_ok():
 
 def test_check_directory_format_ok():
     proc = subprocess.run(
-        ["uv", "tool", "run", "snippet-checker", "format", "test/e2e/snippets"],
+        ["snippet-checker", "format", "test/e2e/snippets"],
         timeout=120,
         capture_output=True,
         text=True,
