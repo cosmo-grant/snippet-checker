@@ -9,6 +9,8 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
 
@@ -27,8 +29,9 @@ class DockerExecutor:
     _image_pull_locks: dict[str, threading.Lock] = {}  # to ensure threads don't pull the same image concurrently
     _container_pools: ClassVar[dict[str, list[docker.models.containers.Container]]] = defaultdict(list)
 
-    def get_container(self, image: str) -> docker.models.containers.Container:
-        """Get or create a long-running container for the given image."""
+    @contextmanager
+    def get_container(self, image: str) -> Generator[docker.models.containers.Container]:
+        """Get a long-running container for the given image, creating first if necessary."""
         # First get the image, pulling if necessary.
         # Want:
         #   - only one thread should pull a given image
@@ -50,26 +53,27 @@ class DockerExecutor:
                 logger.info(f"Pulling image {image}...")  # TODO: logging locks?
                 self._client.images.pull(image)
 
-        # Atomically pop a container from the pool.
+        container = None
+        # Atomically pop a container from the pool if available.
         with self._lock:
             pool = self._container_pools[image]
             if pool:
-                return pool.pop()
+                container = pool.pop()
 
-        # No container when we wanted it.
-        # So create a new one.
-        # The caller should release it to the pool when finished with it.
-        logger.info(f"Creating container from image {image}...")
-        return self._client.containers.run(
-            image,
-            ["tail", "-f", "/dev/null"],
-            detach=True,
-        )
-
-    def release_container(self, image: str, container: docker.models.containers.Container):
-        # TODO: can we find the image from the container, so simplify the signature?
-        with self._lock:
-            self._container_pools[image].append(container)
+        if not container:
+            # No container available when we checked.
+            # So create a new one (outside the lock, because slow).
+            logger.info(f"Creating container from image {image}...")
+            container = self._client.containers.run(
+                image,
+                ["tail", "-f", "/dev/null"],
+                detach=True,
+            )
+        try:
+            yield container
+        finally:
+            with self._lock:
+                self._container_pools[image].append(container)
 
     def write(self, container: docker.models.containers.Container, content: str, dest: Path) -> None:
         data = io.BytesIO()
@@ -163,9 +167,7 @@ class PythonSnippet(Snippet):
 
     def output(self) -> str:
         dest = Path("/tmp/main.py")
-        container = self.executor.get_container(self.image)
-        # TODO: context manager?
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             return self.executor.exec_run_timed(
                 container,
@@ -175,13 +177,10 @@ class PythonSnippet(Snippet):
                     "PYTHONWARNINGS": "ignore",
                 },
             )
-        finally:
-            self.executor.release_container(self.image, container)
 
     def format(self, compress: bool) -> str | None:
         dest = Path("/tmp/main.py")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             exit_code, _ = self.executor.exec_run(container, ["/bin/sh", "-c", f"python -m pip install ruff && ruff format {dest}"])
             _, bytes_ = self.executor.exec_run(container, ["cat", str(dest)])
@@ -192,8 +191,6 @@ class PythonSnippet(Snippet):
                 if compress:
                     formatted = formatted.replace("\n\n\n", "\n\n")  # crude
             return formatted
-        finally:
-            self.executor.release_container(self.image, container)
 
 
 class GoSnippet(Snippet):
@@ -201,8 +198,7 @@ class GoSnippet(Snippet):
 
     def output(self) -> str:
         dest = Path("/tmp/main.go")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             self.executor.exec_run(
                 container,
@@ -210,13 +206,10 @@ class GoSnippet(Snippet):
                 workdir="/tmp",
             )
             return self.executor.exec_run_timed(container, ["/tmp/main"])
-        finally:
-            self.executor.release_container(self.image, container)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.go")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             exit_code, _ = self.executor.exec_run(container, ["go", "fmt", str(dest)])
             if exit_code != 0:
@@ -228,8 +221,6 @@ class GoSnippet(Snippet):
                     formatted = formatted.strip().replace("\n\n\n", "\n\n")
 
             return formatted
-        finally:
-            self.executor.release_container(self.image, container)
 
 
 class NodeSnippet(Snippet):
@@ -237,17 +228,13 @@ class NodeSnippet(Snippet):
 
     def output(self) -> str:
         dest = Path("/tmp/main.js")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             return self.executor.exec_run_timed(container, ["node", str(dest)], environment={"NO_COLOR": "1"})
-        finally:
-            self.executor.release_container(self.image, container)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.js")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             exit_code, _ = self.executor.exec_run(container, ["/bin/sh", "-c", f"npx prettier --write {dest}"])
             _, bytes_ = self.executor.exec_run(container, ["cat", str(dest)])
@@ -259,8 +246,6 @@ class NodeSnippet(Snippet):
                     formatted = formatted.replace("\n\n\n", "\n\n")  # crude
 
             return formatted
-        finally:
-            self.executor.release_container(self.image, container)
 
 
 class RubySnippet(Snippet):
@@ -268,17 +253,13 @@ class RubySnippet(Snippet):
 
     def output(self) -> str:
         dest = Path("/tmp/main.rb")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             return self.executor.exec_run_timed(container, ["ruby", str(dest)])
-        finally:
-            self.executor.release_container(self.image, container)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.rb")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             exit_code, _ = self.executor.exec_run(container, ["/bin/sh", "-c", f"gem install rubocop && rubocop -A {dest}"])
             _, bytes_ = self.executor.exec_run(container, ["cat", str(dest)])
@@ -290,8 +271,6 @@ class RubySnippet(Snippet):
                     formatted = formatted.replace("\n\n\n", "\n\n")  # crude
 
             return formatted
-        finally:
-            self.executor.release_container(self.image, container)
 
 
 class RustSnippet(Snippet):
@@ -299,18 +278,14 @@ class RustSnippet(Snippet):
 
     def output(self) -> str:
         dest = Path("/tmp/main.rs")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             self.executor.exec_run(container, ["rustc", "main.rs"], workdir="/tmp")
             return self.executor.exec_run_timed(container, ["/tmp/main"])
-        finally:
-            self.executor.release_container(self.image, container)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.rs")
-        container = self.executor.get_container(self.image)
-        try:
+        with self.executor.get_container(self.image) as container:
             self.executor.exec_run(container, ["rustup", "component", "add", "rustfmt"])
             self.executor.write(container, self.code, dest)
             exit_code, _ = self.executor.exec_run(container, ["rustfmt", str(dest)])
@@ -323,8 +298,6 @@ class RustSnippet(Snippet):
                     formatted = formatted.replace("\n\n\n", "\n\n")  # crude
 
             return formatted
-        finally:
-            self.executor.release_container(self.image, container)
 
 
 # TODO: what about ctrl-c?
