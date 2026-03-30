@@ -18,39 +18,47 @@ logger = logging.getLogger(__name__)
 
 
 class DockerExecutor:
-    _lock = threading.Lock()
     _client: ClassVar[docker.client.DockerClient] = (
         docker.from_env()
         if platform.system() == "Linux"
         else docker.from_env(environment={"DOCKER_HOST": f"unix://{Path.home()}/.docker/run/docker.sock"})
     )
-
+    _lock = threading.Lock()  # used for various, low-contention purposes
+    _image_pull_locks: dict[str, threading.Lock] = {}  # to ensure threads don't pull the same image concurrently
     _container_pools: ClassVar[dict[str, list[docker.models.containers.Container]]] = defaultdict(list)
 
     def get_container(self, image: str) -> docker.models.containers.Container:
         """Get or create a long-running container for the given image."""
-        # pull image if necessary
-        # we only really need a lock per image, but let's keep it simple to start with: one lock total
-        # could get fancy:
-        #   - image_lock
-        #   - image_pull_locks: dict from image to lock
-        #   - you have to acquire image_lock to check for image_pull_locks[image], create lock if not found
-        # then you have to acquire image_pull_locks[image] to pull the image
-        # that way, you can pull different images concurrently, because different locks
+        # First get the image, pulling if necessary.
+        # Want:
+        #   - only one thread should pull a given image
+        #   - but threads should be able to pull different images concurrently
+        # To do this, we create a lock per image on demand.
+        # A thread must hold the image's lock to pull it.
+
+        # The first thread to acquire the lock creates the image lock.
+        # For subsequent threads it's a no-op.
         with self._lock:
+            if image not in self._image_pull_locks:
+                self._image_pull_locks[image] = threading.Lock()
+
+        # The first thread to acquire the image lock pulls the image if not present.
+        with self._image_pull_locks[image]:
             try:
                 self._client.images.get(image)
             except docker.errors.ImageNotFound:
                 logger.info(f"Pulling image {image}...")  # TODO: logging locks?
                 self._client.images.pull(image)
 
+        # Atomically pop a container from the pool.
         with self._lock:
             pool = self._container_pools[image]
             if pool:
                 return pool.pop()
 
-        # Create container outside the lock.
-        # We add it to the pool when finished with it.
+        # No container when we wanted it.
+        # So create a new one.
+        # The caller should release it to the pool when finished with it.
         logger.info(f"Creating container from image {image}...")
         return self._client.containers.run(
             image,
