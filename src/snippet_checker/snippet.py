@@ -90,6 +90,12 @@ class DockerExecutor:
             logs.append((now - previous, chunk))
             previous = now
 
+        output_stream.close()
+        # CancellableStream.close() doesn't close the underlying response,
+        # causing "ValueError: I/O operation on closed file" at shutdown.
+        # See https://github.com/docker/docker-py/issues/3345
+        output_stream._response.close()
+
         return to_string(logs)
 
 
