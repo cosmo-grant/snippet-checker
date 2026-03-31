@@ -38,3 +38,12 @@ Check test coverage:
 coverage run -m pytest
 coverage report
 ```
+
+Release a version:
+
+```
+uv build
+git tag vX.Y.Z
+git push --tags
+uv publish --token "$TOKEN"
+```
