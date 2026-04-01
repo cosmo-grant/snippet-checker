@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import Literal
@@ -43,7 +44,7 @@ def check_output(repository: Repository, mode: Mode) -> int:
     print(f"Will check {len(questions_to_check)}.")
     print("----------")
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 8)) as executor:
         futures = [executor.submit(question.normalised_actual_output) for question in questions_to_check]
 
     for question, future in zip(questions_to_check, futures, strict=True):
@@ -104,7 +105,7 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
     print(f"Will check {len(questions_to_check)}.")
     print("----------")
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 8)) as executor:
         futures = [executor.submit(question.snippet.format, compress=question.compress) for question in questions_to_check]
 
     for question, future in zip(questions_to_check, futures, strict=True):
