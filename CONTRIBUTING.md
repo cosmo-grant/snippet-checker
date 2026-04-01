@@ -42,6 +42,7 @@ coverage report
 Release a version:
 
 ```
+# update version in pyproject.toml
 uv build
 git tag vX.Y.Z
 git push --tags
