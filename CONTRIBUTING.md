@@ -43,7 +43,7 @@ Release a version:
 
 ```
 # update version in pyproject.toml
-uv build
+uv build --clear
 git tag vX.Y.Z
 git push --tags
 uv publish --token "$TOKEN"
