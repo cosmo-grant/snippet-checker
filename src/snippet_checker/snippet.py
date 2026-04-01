@@ -50,7 +50,7 @@ class DockerExecutor:
             try:
                 self._client.images.get(image)
             except docker.errors.ImageNotFound:
-                logger.info(f"Pulling image {image}...")  # TODO: logging locks?
+                logger.info(f"Pulling image {image}...")
                 self._client.images.pull(image)
 
         container = None
