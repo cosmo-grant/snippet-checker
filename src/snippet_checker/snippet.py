@@ -91,10 +91,12 @@ class DockerExecutor:
     @classmethod
     def cleanup(self) -> None:
         """Remove all containers in the pool."""
+        logger.info("Cleaning up containers...")
         for pool in self._container_pools.values():
             for container in pool:
                 container.remove(force=True)
         self._container_pools.clear()
+        logger.info("Cleaned up ok.")
 
     # TOOD: timeouts?
     def exec_run(

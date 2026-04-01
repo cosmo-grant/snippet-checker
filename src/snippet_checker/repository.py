@@ -64,7 +64,7 @@ class DirectoryRepository(Repository):
         self.dir = dir
 
     def get(self) -> list[Question]:
-        print(f"Looking for questions in directory '{self.dir}'.")
+        print(f"Looking for snippets in directory '{self.dir}'...")
 
         questions: list[Question] = []
         for dirpath, _, _ in self.dir.walk():
@@ -161,7 +161,7 @@ class AnkiRepository(Repository):
         self.tag = tag
 
     def get(self) -> list[Question]:
-        print(f"Looking for notes tagged '{self.tag}'.")
+        print(f"Looking for snippets in notes tagged '{self.tag}'...")
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
         self.notes = [note for note in notes if self.tag in note.tags]

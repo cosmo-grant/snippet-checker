@@ -40,9 +40,8 @@ def check_output(repository: Repository, mode: Mode) -> int:
     questions = repository.get()
     questions_to_check = [question for question in questions if question.check_output]
 
-    print(f"Found {len(questions)} questions.")
+    print(f"Found {len(questions)} snippets.")
     print(f"Will check {len(questions_to_check)}.")
-    print("----------")
 
     with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 8)) as executor:
         futures = [executor.submit(question.normalised_actual_output) for question in questions_to_check]
@@ -50,6 +49,7 @@ def check_output(repository: Repository, mode: Mode) -> int:
     for question, future in zip(questions_to_check, futures, strict=True):
         normalised_actual_output = future.result()
         if normalised_actual_output != question.given_output:
+            print("----------")
             print(f"\N{CROSS MARK} Bad output for {question.id}.", end="\n\n")
             print("Code:")
             colour_print(question.snippet.code, colour="cyan", end="\n\n")
@@ -77,8 +77,8 @@ def check_output(repository: Repository, mode: Mode) -> int:
                 repository.write_output(question, normalised_actual_output)
                 fixed.append(question)
                 print("\N{SPARKLES} Auto-fixed.")
-            print("----------")
 
+    print("----------")
     if failed:
         print(
             f"{len(failed)} questions had bad output "
@@ -86,7 +86,7 @@ def check_output(repository: Repository, mode: Mode) -> int:
             f"{len(fixed)} fixed, "
             f"{len(ignored)} will be ignored in future, "
             f"{len(failed) - len(fixed) - len(ignored)} remaining"
-            ")"
+            ")."
         )
         return 1
     else:
@@ -101,24 +101,23 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
     questions = repository.get()
     questions_to_check = [question for question in questions if question.check_format]
 
-    print(f"Found {len(questions)} questions.")
+    print(f"Found {len(questions)} snippets.")
     print(f"Will check {len(questions_to_check)}.")
-    print("----------")
-
     with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 8)) as executor:
         futures = [executor.submit(question.snippet.format, compress=question.compress) for question in questions_to_check]
 
     for question, future in zip(questions_to_check, futures, strict=True):
         formatted = future.result()
         if formatted is None:
+            print("----------")
             # error when trying to format snippet
             # treat as non-fixable failure
             print(f"\N{CROSS MARK} Error when formatting {question.id}.", end="\n\n")
             print("Given:")
             colour_print(question.snippet.code, colour="red")
             failed.append(question)
-            print("----------")
         elif formatted != question.snippet.code:
+            print("----------")
             print(f"\N{CROSS MARK} Bad formatting for {question.id}.", end="\n\n")
             print("Formatted:")
             colour_print(formatted, colour="green", end="\n\n")
@@ -144,8 +143,8 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
                 repository.write_code(question, formatted)
                 fixed.append(question)
                 print("\N{SPARKLES} Auto-fixed.")
-            print("----------")
 
+    print("----------")
     if failed:
         print(
             f"{len(failed)} questions had bad formatting "
@@ -153,7 +152,7 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
             f"{len(fixed)} fixed, "
             f"{len(ignored)} will be ignored in future, "
             f"{len(failed) - len(fixed) - len(ignored)} left"
-            ")"
+            ")."
         )
         return 1
     else:

@@ -28,9 +28,11 @@ parser.add_argument("target", help="Directory or anki tag of the questions to ch
 
 def app() -> int:
     args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig()
-        logging.getLogger("snippet_checker").setLevel(logging.DEBUG)
+
+    logging.basicConfig(format="%(message)s")
+    logger = logging.getLogger("snippet_checker")
+    level = logging.DEBUG if args.verbose else logging.INFO
+    logger.setLevel(level)
 
     repository: Repository
     config: DirectoryConfig | AnkiConfig
