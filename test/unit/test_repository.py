@@ -84,6 +84,8 @@ def test_update_note_field():
         id=1,
         fields=['<pre><code class="lang-python">foobar</code></pre>', "", "", ""],
         tags=[],
+        _note_type_name="code_output",
+        _keys=["code", "output", "explanation", "context"],
     )
     field_config = FieldConfig(name="code", pattern=re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$'))
     update_field(note, field_config, "print(1 + 1 == 2)")
@@ -95,6 +97,8 @@ def test_update_note_field_escapes_html():
         id=1,
         fields=["", "<pre><samp>foobar</samp></pre>", "", ""],
         tags=[],
+        _note_type_name="code_output",
+        _keys=["code", "output", "explanation", "context"],
     )
     field_config = FieldConfig(name="output", pattern=re.compile(r"(?s)^<pre><samp>(?P<target>.*)</samp></pre>$"))
     update_field(note, field_config, "<nil> & <nil>")
@@ -139,12 +143,14 @@ class FakeNote:
     id: int
     fields: list[str]
     tags: list[str]
+    _note_type_name: str
+    _keys: list[str]
 
-    def note_type(self) -> dict[str, Any]:
-        return {"name": "code_output"}
+    def note_type(self) -> dict[str, str]:
+        return {"name": self._note_type_name}
 
     def keys(self) -> list[str]:
-        return ["code", "output", "explanation", "context"]
+        return self._keys
 
 
 def test_note_to_question():
@@ -157,6 +163,8 @@ def test_note_to_question():
             "Python",
         ],
         tags=["snip:image:python:3.13"],
+        _note_type_name="code_output",
+        _keys=["code", "output", "explanation", "context"],
     )
     note_type_configs = [
         NoteTypeConfig(
@@ -192,6 +200,8 @@ def test_note_to_question_respects_config_tags():
             "snip:no_compress",
             "snip:output_verbosity:2",
         ],
+        _note_type_name="code_output",
+        _keys=["code", "output", "explanation", "context"],
     )
     note_type_configs = [
         NoteTypeConfig(
