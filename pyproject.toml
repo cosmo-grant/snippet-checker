@@ -1,6 +1,6 @@
 [project]
 name = "snippet-checker"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
     {name="Cosmo Grant", email="cosmodgrant@gmail.com"},
 ]
