@@ -174,7 +174,7 @@ class AnkiRepository(Repository):
         note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
         index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.output_field.name)
         current = note.fields[index]
-        fixed = replace_target(note_type_config.output_field.pattern, current, escape_html(output))
+        fixed = replace_target(note_type_config.output_field.pattern, current, output)
         note.fields[index] = fixed
         self.collection.update_note(note)
 
