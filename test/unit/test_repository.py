@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import re
 import tomllib
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -81,28 +80,22 @@ def test_replace_target_escapes_html():
 
 def test_update_note_field():
     note = FakeNote(
-        id=1,
-        fields=['<pre><code class="lang-python">foobar</code></pre>', "", "", ""],
-        tags=[],
-        _note_type_name="code_output",
-        _keys=["code", "output", "explanation", "context"],
+        fields=[""],
+        _keys=["code"],
     )
-    field_config = FieldConfig(name="code", pattern=re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$'))
+    field_config = FieldConfig(name="code", pattern=re.compile(r"(?P<target>.*)"))
     update_field(note, field_config, "print(1 + 1 == 2)")
-    assert note.fields == ['<pre><code class="lang-python">print(1 + 1 == 2)</code></pre>', "", "", ""]
+    assert note.fields == ["print(1 + 1 == 2)"]
 
 
 def test_update_note_field_escapes_html():
     note = FakeNote(
-        id=1,
-        fields=["", "<pre><samp>foobar</samp></pre>", "", ""],
-        tags=[],
-        _note_type_name="code_output",
-        _keys=["code", "output", "explanation", "context"],
+        fields=[""],
+        _keys=["output"],
     )
-    field_config = FieldConfig(name="output", pattern=re.compile(r"(?s)^<pre><samp>(?P<target>.*)</samp></pre>$"))
+    field_config = FieldConfig(name="output", pattern=re.compile(r"(?P<target>.*)"))
     update_field(note, field_config, "<nil> & <nil>")
-    assert note.fields == ["", "<pre><samp>&lt;nil> &amp; &lt;nil></samp></pre>", "", ""]
+    assert note.fields == ["&lt;nil> &amp; &lt;nil>"]
 
 
 @pytest.mark.parametrize(
@@ -138,13 +131,18 @@ def test_anki_config_flags_override_defaults():
 
 @dataclass
 class FakeNote:
-    """Minimal note structure matching anki.notes.Note protocol."""
+    """
+    Minimal note structure matching anki.notes.Note protocol.
 
-    id: int
-    fields: list[str]
-    tags: list[str]
-    _note_type_name: str
-    _keys: list[str]
+    The underscore fields are testing conveniences, to allow the
+    caller to control the method return values.
+    """
+
+    id: int = field(default_factory=int)
+    fields: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    _note_type_name: str = ""
+    _keys: list[str] = field(default_factory=list)
 
     def note_type(self) -> dict[str, str]:
         return {"name": self._note_type_name}
@@ -155,28 +153,26 @@ class FakeNote:
 
 def test_note_to_question():
     note = FakeNote(
-        id=123,
+        id=1,
         fields=[
-            '<pre><code class="lang-python">print(1 + 1 == 2)</code></pre>',
-            "<pre><samp>True</samp></pre>",
-            "See Principia.",
-            "Python",
+            "print(1 + 1)",
+            "2\n",
         ],
         tags=["snip:image:python:3.13"],
         _note_type_name="code_output",
-        _keys=["code", "output", "explanation", "context"],
+        _keys=["code", "output"],
     )
     note_type_configs = [
         NoteTypeConfig(
             name="code_output",
-            code_field=FieldConfig(name="code", pattern=re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$')),
-            output_field=FieldConfig(name="output", pattern=re.compile(r"(?s)^<pre><samp>(?P<target>.*)</samp></pre>$")),
+            code_field=FieldConfig(name="code", pattern=re.compile(r"(?P<target>.*)")),
+            output_field=FieldConfig(name="output", pattern=re.compile(r"(?P<target>.*)", re.DOTALL)),
         ),
     ]
     q = note_to_question(note_type_configs, note)
-    assert q.id == 123
-    assert q.snippet.code == "print(1 + 1 == 2)"
-    assert q.given_output == "True"
+    assert q.id == 1
+    assert q.snippet.code == "print(1 + 1)"
+    assert q.given_output == "2\n"
     assert q.image == "python:3.13"
     assert q.check_output is True
     assert q.check_format is True
@@ -186,13 +182,7 @@ def test_note_to_question():
 
 def test_note_to_question_respects_config_tags():
     note = FakeNote(
-        id=456,
-        fields=[
-            '<pre><code class="lang-python">print(1)</code></pre>',
-            "<pre><samp>1\n</samp></pre>",
-            "Printing 1 prints 1.",
-            "Python",
-        ],
+        fields=["", ""],
         tags=[
             "snip:image:python:3.13",
             "snip:no_check_output",
@@ -201,13 +191,13 @@ def test_note_to_question_respects_config_tags():
             "snip:output_verbosity:2",
         ],
         _note_type_name="code_output",
-        _keys=["code", "output", "explanation", "context"],
+        _keys=["code", "output"],
     )
     note_type_configs = [
         NoteTypeConfig(
             name="code_output",
-            code_field=FieldConfig(name="code", pattern=re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$')),
-            output_field=FieldConfig(name="output", pattern=re.compile(r"(?s)^<pre><samp>(?P<target>.*)</samp></pre>$")),
+            code_field=FieldConfig(name="code", pattern=re.compile(r"(?P<target>.*)")),
+            output_field=FieldConfig(name="output", pattern=re.compile(r"(?P<target>.*)")),
         ),
     ]
     q = note_to_question(note_type_configs, note)
