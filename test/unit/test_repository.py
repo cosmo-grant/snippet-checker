@@ -16,6 +16,7 @@ from snippet_checker.repository import (
     note_to_question,
     replace_target,
     unescape_html,
+    update_field,
 )
 
 
@@ -76,6 +77,28 @@ def test_replace_target_escapes_html():
     )
     expected = '<pre><code class="lang-python">x &lt; 1</code></pre>'
     assert actual == expected
+
+
+def test_update_note_field():
+    note = FakeNote(
+        id=1,
+        fields=['<pre><code class="lang-python">foobar</code></pre>', "", "", ""],
+        tags=[],
+    )
+    field_config = FieldConfig(name="code", pattern=re.compile(r'(?s)^<pre><code class="lang-\w+">(?P<target>.*)</code></pre>$'))
+    update_field(note, field_config, "print(1 + 1 == 2)")
+    assert note.fields == ['<pre><code class="lang-python">print(1 + 1 == 2)</code></pre>', "", "", ""]
+
+
+def test_update_note_field_escapes_html():
+    note = FakeNote(
+        id=1,
+        fields=["", "<pre><samp>foobar</samp></pre>", "", ""],
+        tags=[],
+    )
+    field_config = FieldConfig(name="output", pattern=re.compile(r"(?s)^<pre><samp>(?P<target>.*)</samp></pre>$"))
+    update_field(note, field_config, "<nil> & <nil>")
+    assert note.fields == ["", "<pre><samp>&lt;nil> &amp; &lt;nil></samp></pre>", "", ""]
 
 
 @pytest.mark.parametrize(

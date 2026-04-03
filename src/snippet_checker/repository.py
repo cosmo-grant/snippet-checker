@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import tomli_w
 from anki.storage import Collection
 
-from .config import AnkiConfig, AnkiNoteConfig, DirectoryConfig, NoteTypeConfig
+from .config import AnkiConfig, AnkiNoteConfig, DirectoryConfig, FieldConfig, NoteTypeConfig
 from .question import Question, Tag
 
 if TYPE_CHECKING:
@@ -172,10 +172,7 @@ class AnkiRepository(Repository):
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
-        index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.output_field.name)
-        current = note.fields[index]
-        fixed = replace_target(note_type_config.output_field.pattern, current, output)
-        note.fields[index] = fixed
+        update_field(note, note_type_config.output_field, output)
         self.collection.update_note(note)
 
     def write_code(self, question, code: str) -> None:
@@ -183,10 +180,7 @@ class AnkiRepository(Repository):
         assert isinstance(question.id, int)
         note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
         note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
-        index = next(i for i, field_name in enumerate(note.keys()) if field_name == note_type_config.code_field.name)
-        current = note.fields[index]
-        fixed = replace_target(note_type_config.code_field.pattern, current, code)
-        note.fields[index] = fixed
+        update_field(note, note_type_config.code_field, code)
         self.collection.update_note(note)
 
     def add_tag(self, question: Question, tag: Tag) -> None:
@@ -239,3 +233,16 @@ def replace_target(pattern: re.Pattern, current: str, target_repl: str) -> str:
     assert m is not None
     start, end = m.span("target")
     return current[:start] + escape_html(target_repl) + current[end:]
+
+
+def update_field(note: Note, field_config: FieldConfig, replacement: str) -> None:
+    """
+    Update a field of the note with the replacement, guided by the field config.
+
+    It modifies the in-memory note in-place.
+    It does not write to the collection.
+    """
+    index = next(i for i, field_name in enumerate(note.keys()) if field_name == field_config.name)
+    current = note.fields[index]
+    fixed = replace_target(field_config.pattern, current, replacement)
+    note.fields[index] = fixed
