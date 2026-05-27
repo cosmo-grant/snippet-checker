@@ -98,7 +98,6 @@ class DockerExecutor:
         self._container_pools.clear()
         logger.info("Cleaned up ok.")
 
-    # TOOD: timeouts?
     def exec_run(
         self,
         container: docker.models.containers.Container,
@@ -112,17 +111,37 @@ class DockerExecutor:
         self,
         container: docker.models.containers.Container,
         command: list[str],
+        timeout: float | None,
         environment: dict[str, str] | None = None,
         workdir: str | None = None,
     ) -> str:
         "Run the given command in a container, returning a string representing the timed output."
         logs: list[tuple[float, bytes]] = []
-        previous = time.perf_counter()  # must come after getting the container
+        start = time.perf_counter()
         _, output_stream = container.exec_run(command, tty=True, stream=True, environment=environment, workdir=workdir)
-        for chunk in output_stream:
-            now = time.perf_counter()
-            logs.append((now - previous, chunk))
-            previous = now
+
+        def worker():
+            # Iterating over output_stream blocks until data available.
+            # But I want to cope with snippets which hang.
+            # So run this function in a worker thread and join with timeout.
+            previous = start
+            while True:
+                try:
+                    chunk = next(output_stream)
+                except (ValueError, StopIteration):
+                    # I assume a ValueError is "I/O operation on closed file".
+                    # The join timed out, so the main thread closed the output stream.
+                    # But the for loop was still doing I/O on it, because (I guess) of how iterating over it works.
+                    break
+                else:
+                    now = time.perf_counter()
+                    logs.append((now - previous, chunk))
+                    previous = now
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join(timeout)
+        hanged = t.is_alive()
 
         output_stream.close()
         # CancellableStream.close() doesn't close the underlying response,
@@ -130,11 +149,15 @@ class DockerExecutor:
         # See https://github.com/docker/docker-py/issues/3345
         output_stream._response.close()
 
-        return to_string(logs)
+        return to_string(logs, hanged)
 
 
-def to_string(logs: list[tuple[float, bytes]]) -> str:
-    "Return a string constructed from timed docker logs."
+def to_string(logs: list[tuple[float, bytes]], hanged: bool = False) -> str:
+    """
+    Return a string constructed from timed docker logs.
+
+    If the container hanged, append "..." on its own line to the returned string.
+    """
     output = b""
     for delta, char in logs:
         rounded_delta = round(delta)
@@ -144,7 +167,12 @@ def to_string(logs: list[tuple[float, bytes]]) -> str:
             output += bytes(f"<~{rounded_delta}s>\n", "utf-8")
             output += char
 
-    return output.decode("utf-8").replace("\r\n", "\n")
+    result = output.decode("utf-8").replace("\r\n", "\n")
+    if hanged:
+        result += "" if result.endswith("\n") else "\n"
+        result += "...\n"
+
+    return result
 
 
 class Snippet(ABC):
@@ -156,7 +184,7 @@ class Snippet(ABC):
         self.executor = DockerExecutor()
 
     @abstractmethod
-    def output(self) -> str:
+    def output(self, timeout: float | None) -> str:
         raise NotImplementedError
 
     @abstractmethod
@@ -167,13 +195,14 @@ class Snippet(ABC):
 class PythonSnippet(Snippet):
     "A Python code snippet."
 
-    def output(self) -> str:
+    def output(self, timeout: float | None) -> str:
         dest = Path("/tmp/main.py")
         with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             return self.executor.exec_run_timed(
                 container,
                 ["python", str(dest)],
+                timeout,
                 environment={
                     "NO_COLOR": "true",
                     "PYTHONWARNINGS": "ignore",
@@ -198,7 +227,7 @@ class PythonSnippet(Snippet):
 class GoSnippet(Snippet):
     "A Go code snippet."
 
-    def output(self) -> str:
+    def output(self, timeout: float | None) -> str:
         dest = Path("/tmp/main.go")
         with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
@@ -207,7 +236,7 @@ class GoSnippet(Snippet):
                 ["go", "build", str(dest)],
                 workdir="/tmp",
             )
-            return self.executor.exec_run_timed(container, ["/tmp/main"])
+            return self.executor.exec_run_timed(container, ["/tmp/main"], timeout)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.go")
@@ -228,11 +257,11 @@ class GoSnippet(Snippet):
 class NodeSnippet(Snippet):
     "A Node code snippet."
 
-    def output(self) -> str:
+    def output(self, timeout: float | None) -> str:
         dest = Path("/tmp/main.js")
         with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
-            return self.executor.exec_run_timed(container, ["node", str(dest)], environment={"NO_COLOR": "1"})
+            return self.executor.exec_run_timed(container, ["node", str(dest)], timeout, environment={"NO_COLOR": "1"})
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.js")
@@ -253,11 +282,11 @@ class NodeSnippet(Snippet):
 class RubySnippet(Snippet):
     "A Ruby code snippet."
 
-    def output(self) -> str:
+    def output(self, timeout: float | None) -> str:
         dest = Path("/tmp/main.rb")
         with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
-            return self.executor.exec_run_timed(container, ["ruby", str(dest)])
+            return self.executor.exec_run_timed(container, ["ruby", str(dest)], timeout)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.rb")
@@ -278,12 +307,12 @@ class RubySnippet(Snippet):
 class RustSnippet(Snippet):
     "A Rust code snippet."
 
-    def output(self) -> str:
+    def output(self, timeout: float | None) -> str:
         dest = Path("/tmp/main.rs")
         with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             self.executor.exec_run(container, ["rustc", "main.rs"], workdir="/tmp")
-            return self.executor.exec_run_timed(container, ["/tmp/main"])
+            return self.executor.exec_run_timed(container, ["/tmp/main"], timeout)
 
     def format(self, compress: bool = False) -> str | None:
         dest = Path("/tmp/main.rs")

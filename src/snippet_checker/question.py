@@ -25,6 +25,7 @@ class Question:
         check_format: bool,
         output_verbosity: int,
         compress: bool,
+        timeout: float | None,
         review: bool = False,
     ):
         self.id = id
@@ -32,6 +33,7 @@ class Question:
         self.given_output = given_output
         self.output_verbosity = output_verbosity
         self.compress = compress
+        self.timeout = timeout
         self.snippet: Snippet
         self.output_normaliser: type[OutputNormaliser]
         if image.startswith("golang"):
@@ -56,5 +58,5 @@ class Question:
         self.review = review
 
     def normalised_actual_output(self):
-        actual_output = self.snippet.output()
+        actual_output = self.snippet.output(self.timeout)
         return self.output_normaliser.normalise(actual_output, output_verbosity=self.output_verbosity)

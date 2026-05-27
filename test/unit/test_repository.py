@@ -169,7 +169,7 @@ def test_note_to_question():
             output_field=FieldConfig(name="output", pattern=re.compile(r"(?P<target>.*)", re.DOTALL)),
         ),
     ]
-    q = note_to_question(note_type_configs, note)
+    q = note_to_question(note_type_configs, None, note)
     assert q.id == 1
     assert q.snippet.code == "print(1 + 1)"
     assert q.given_output == "2\n"
@@ -200,7 +200,7 @@ def test_note_to_question_respects_config_tags():
             output_field=FieldConfig(name="output", pattern=re.compile(r"(?P<target>.*)")),
         ),
     ]
-    q = note_to_question(note_type_configs, note)
+    q = note_to_question(note_type_configs, None, note)
     assert q.check_output is False
     assert q.check_format is False
     assert q.compress is False
@@ -273,6 +273,7 @@ def test_directory_repository_add_tag_creates_config(tmp_path):
         check_format=True,
         output_verbosity=0,
         compress=False,
+        timeout=None,
     )
 
     repo = DirectoryRepository(
@@ -298,6 +299,7 @@ def test_directory_repository_add_tag_idempotent(tmp_path):
         check_format=True,
         output_verbosity=0,
         compress=False,
+        timeout=None,
     )
     repo = DirectoryRepository(
         DirectoryConfig(images={"py": "python:3.13"}),
@@ -322,6 +324,7 @@ def test_directory_repository_add_tag_merges_existing(tmp_path):
         check_format=True,
         output_verbosity=0,
         compress=False,
+        timeout=None,
     )
     repo = DirectoryRepository(
         DirectoryConfig(images={"py": "python:3.13"}),

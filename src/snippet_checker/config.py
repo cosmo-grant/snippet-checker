@@ -14,6 +14,7 @@ class DirectoryConfig:
     check_output: bool = True
     output_verbosity: int = 1
     compress: bool = False
+    timeout: float | None = None
     review: bool = False
 
 
@@ -63,6 +64,7 @@ class AnkiConfig:
     note_types: list[NoteTypeConfig]
     profile: str | None = None
     collection_path: Path | None = None
+    timeout: float | None = None
 
     def __post_init__(self):
         if self.profile is None and self.collection_path is None:
@@ -94,6 +96,7 @@ def get_anki_config() -> AnkiConfig:
     # extra keys are ignored
     return AnkiConfig(
         profile=raw.get("profile"),
+        timeout=raw.get("timeout"),
         collection_path=Path(raw["collection_path"]) if "collection_path" in raw else None,
         note_types=[
             NoteTypeConfig(

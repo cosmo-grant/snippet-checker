@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from anki.notes import Note
 
 
-def note_to_question(note_type_configs: list[NoteTypeConfig], note: Note) -> Question:
+def note_to_question(note_type_configs: list[NoteTypeConfig], timeout: float | None, note: Note) -> Question:
     """Convert an Anki note to a Question."""
     note_type_config = next(config for config in note_type_configs if config.name == note.note_type()["name"])  # type: ignore[index]
     fields = dict(zip(note.keys(), note.fields, strict=True))
@@ -37,6 +37,7 @@ def note_to_question(note_type_configs: list[NoteTypeConfig], note: Note) -> Que
         note_config.check_format,
         note_config.output_verbosity,
         note_config.compress,
+        timeout,
     )
 
 
@@ -103,6 +104,7 @@ class DirectoryRepository(Repository):
                     check_format=config.check_format,
                     output_verbosity=config.output_verbosity,
                     compress=config.compress,
+                    timeout=config.timeout,
                     review=config.review,
                 )
             )
@@ -165,7 +167,7 @@ class AnkiRepository(Repository):
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
         self.notes = [note for note in notes if self.tag in note.tags]
-        return [note_to_question(self.config.note_types, note) for note in self.notes]
+        return [note_to_question(self.config.note_types, self.config.timeout, note) for note in self.notes]
 
     def write_output(self, question: Question, output: str) -> None:
         "Replace the question's output field target by the given string."

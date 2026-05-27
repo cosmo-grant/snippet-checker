@@ -92,6 +92,7 @@ def test_get_anki_config(monkeypatch, tmp_path):
     xdg_config_dir.mkdir()
     (xdg_config_dir / "snippet-checker.toml").write_text("""\
 profile = "jo"
+timeout = 10
 
 [[notes]]
 note_type = "code_output"
@@ -106,6 +107,7 @@ pattern = "output_pattern"
 """)
     assert get_anki_config() == AnkiConfig(
         profile="jo",
+        timeout=10,
         note_types=[
             NoteTypeConfig(
                 name="code_output",
@@ -123,6 +125,7 @@ def test_anki_config_exception_if_both_profile_and_path(monkeypatch, tmp_path):
     (xdg_config_dir / "snippet-checker.toml").write_text("""\
 profile = "jo"
 collection_path = "/path/to/collection"
+timeout = 10
 
 [[notes]]
 note_type = "code_output"
@@ -144,6 +147,8 @@ def test_anki_config_exception_if_neither_profile_nor_path(monkeypatch, tmp_path
     xdg_config_dir = tmp_path / "snippet-checker"
     xdg_config_dir.mkdir()
     (xdg_config_dir / "snippet-checker.toml").write_text("""\
+timeout = 10
+
 [[notes]]
 note_type = "code_output"
 
