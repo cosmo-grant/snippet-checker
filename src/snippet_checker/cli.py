@@ -1,6 +1,7 @@
 import logging
 import sys
 from argparse import ArgumentParser
+from importlib.metadata import version
 from pathlib import Path
 
 from .check_snippets import check_formatting, check_output
@@ -9,6 +10,7 @@ from .repository import AnkiRepository, DirectoryRepository, Repository
 
 parser = ArgumentParser()
 parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging.")
+parser.add_argument("--version", action="version", version=version("snippet-checker"), help="Print the version.")
 parser.add_argument("--anki", "-a", action="store_true", help="Check anki instead of a directory.")
 mode = parser.add_mutually_exclusive_group()
 mode.add_argument("-c", "--check", action="store_const", const="check", dest="mode", help="Check and report failures (default).")
