@@ -156,7 +156,7 @@ def to_string(logs: list[tuple[float, bytes]], hanged: bool = False) -> str:
     """
     Return a string constructed from timed docker logs.
 
-    If the container hanged, append "..." on its own line to the returned string.
+    If the container hanged, append "...\n" on its own line to the returned string.
     """
     output = b""
     for delta, char in logs:
@@ -169,7 +169,7 @@ def to_string(logs: list[tuple[float, bytes]], hanged: bool = False) -> str:
 
     result = output.decode("utf-8").replace("\r\n", "\n")
     if hanged:
-        result += "" if result.endswith("\n") else "\n"
+        result += "" if result.endswith("\n") or not result else "\n"
         result += "...\n"
 
     return result
