@@ -292,7 +292,9 @@ class RubySnippet(Snippet):
         dest = Path("/tmp/main.rb")
         with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
-            exit_code, _ = self.executor.exec_run(container, ["/bin/sh", "-c", f"gem install rubocop && rubocop -A {dest}"])
+            exit_code, _ = self.executor.exec_run(
+                container, ["/bin/sh", "-c", f"gem install rubocop && rubocop -A {dest}"]
+            )  # FIXME: e2e fails
             _, bytes_ = self.executor.exec_run(container, ["cat", str(dest)])
             if exit_code != 0:
                 formatted = None
