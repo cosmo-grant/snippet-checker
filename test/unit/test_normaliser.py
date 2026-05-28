@@ -64,6 +64,20 @@ class TestPythonOutputNormaliser:
 
         assert actual == expected
 
+    def test_normalise_single_errno(self):
+        actual = PythonOutputNormaliser.normalise_errnos("OSError: [Errno 98] Address already in use")
+        expected = "OSError: [Errno NNN] Address already in use"
+
+        assert actual == expected
+
+    def test_normalise_multiple_errnos(self):
+        actual = PythonOutputNormaliser.normalise_errnos(
+            "OSError: [Errno 98] Address already in use\nFileNotFoundError: [Errno 2] No such file or directory: 'foo.txt'"
+        )
+        expected = "OSError: [Errno NNN] Address already in use\nFileNotFoundError: [Errno NNN] No such file or directory: 'foo.txt'"
+
+        assert actual == expected
+
 
 class TestNodeNormaliser:
     @mark.parametrize(

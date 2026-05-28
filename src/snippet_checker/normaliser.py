@@ -26,6 +26,8 @@ class PythonOutputNormaliser(OutputNormaliser):
         r".*\n"  # carets
     )
 
+    errno = re.compile(r"\[Errno \d+\]")
+
     @classmethod
     def normalise(cls, output: str, output_verbosity: int) -> str:
         normalised = cls.normalise_memory_addresses(output)
@@ -62,6 +64,11 @@ class PythonOutputNormaliser(OutputNormaliser):
     @classmethod
     def normalise_location_info(cls, output: str, output_verbosity: int) -> str:
         normalised = re.sub(cls.location_info, "", output) if output_verbosity < 2 else output
+        return normalised
+
+    @classmethod
+    def normalise_errnos(cls, output: str) -> str:
+        normalised = re.sub(cls.errno, "[Errno NNN]", output)
         return normalised
 
 
