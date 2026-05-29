@@ -144,6 +144,10 @@ class DockerExecutor:
         t.start()
         t.join(timeout)
         hanged = t.is_alive()
+        if hanged:
+            # We don't want the snippet hanging around while we run more snippets.
+            # See #30.
+            container.restart()
 
         output_stream.close()
         # CancellableStream.close() doesn't close the underlying response,
