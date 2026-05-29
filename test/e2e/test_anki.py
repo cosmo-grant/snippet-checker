@@ -12,6 +12,7 @@ def test_check_anki_output_ok(anki_config, anki_collection, tmp_path, monkeypatc
     )
     assert proc.returncode == 0
     m = re.search(r"Will check (\d+)", proc.stdout)
+    assert m is not None
     num_questions_checked = int(m.group(1))
     assert num_questions_checked > 0
 
@@ -26,5 +27,6 @@ def test_check_anki_format_ok(anki_config, anki_collection, tmp_path, monkeypatc
     )
     assert proc.returncode == 0
     m = re.search(r"Will check (\d+)", proc.stdout)
+    assert m is not None
     num_questions_checked = int(m.group(1))
     assert num_questions_checked > 0

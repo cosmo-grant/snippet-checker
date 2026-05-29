@@ -26,7 +26,9 @@ pattern = "(?s)^(?P<target>.*)$"
 def anki_collection(tmp_path):
     collection = Collection(tmp_path / "test_collection.anki2")
     deck = collection.decks.by_name("Default")
+    assert deck is not None
     model = collection.models.by_name("Basic")
+    assert model is not None
 
     python_note = collection.new_note(model)
     python_note.fields[0] = "print(1 + 1)\n"

@@ -11,6 +11,7 @@ def test_check_directory_output_ok():
     )
     assert proc.returncode == 0
     m = re.search(r"Will check (\d+)", proc.stdout)
+    assert m is not None
     num_questions_checked = int(m.group(1))
     assert num_questions_checked > 0
 
@@ -24,5 +25,6 @@ def test_check_directory_format_ok():
     )
     assert proc.returncode == 0
     m = re.search(r"Will check (\d+)", proc.stdout)
+    assert m is not None
     num_questions_checked = int(m.group(1))
     assert num_questions_checked > 0

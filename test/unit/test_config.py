@@ -108,7 +108,7 @@ pattern = "output_pattern"
     assert get_anki_config() == AnkiConfig(
         profile="jo",
         timeout=10,
-        note_types=[
+        note_type_configs=[
             NoteTypeConfig(
                 name="code_output",
                 code_field=FieldConfig(name="code", pattern=re.compile("code_pattern")),
