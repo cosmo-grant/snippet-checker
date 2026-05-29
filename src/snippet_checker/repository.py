@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import tomli_w
-from anki.notes import NoteId
 from anki.storage import Collection
 
 from .config import AnkiConfig, AnkiNoteConfig, DirectoryConfig, FieldConfig, NoteTypeConfig
@@ -182,23 +181,24 @@ class AnkiRepository(Repository):
     def write_output(self, question: Question, output: str) -> None:
         "Replace the question's output field target by the given string."
         assert isinstance(question.id, int)
-        note = self.collection.get_note(NoteId(question.id))
         note_type_config = get_matching_config(self.config.note_types, note)
+        note = self.collection.get_note(question.id)  # ty: ignore[invalid-argument-type]
         update_field(note, note_type_config.output_field, output)
         self.collection.update_note(note)
 
     def write_code(self, question, code: str) -> None:
+    def write_code(self, question: Question, code: str) -> None:
         "Replace the question's code field target by the given string."
         assert isinstance(question.id, int)
-        note = self.collection.get_note(NoteId(question.id))
         note_type_config = get_matching_config(self.config.note_types, note)
+        note = self.collection.get_note(question.id)  # ty: ignore[invalid-argument-type]
         update_field(note, note_type_config.code_field, code)
         self.collection.update_note(note)
 
     def add_tag(self, question: Question, tag: Tag) -> None:
         "Write a tag to the given question indicating special treatment, e.g. don't check output."
         assert isinstance(question.id, int)
-        note = self.collection.get_note(NoteId(question.id))
+        note = self.collection.get_note(question.id)  # ty: ignore[invalid-argument-type]
         note.tags.append("snip:" + tag.value)  # TODO: avoid scattered hard-coded "snip:"
         self.collection.update_note(note)
 
