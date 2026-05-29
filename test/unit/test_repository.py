@@ -163,13 +163,14 @@ def test_note_to_question():
         _keys=["code", "output"],
     )
     anki_config = AnkiConfig(
+        profile="jo",
         note_type_configs=[
             NoteTypeConfig(
                 name="code_output",
                 code_field=FieldConfig(name="code", pattern=re.compile(r"(?P<target>.*)")),
                 output_field=FieldConfig(name="output", pattern=re.compile(r"(?P<target>.*)", re.DOTALL)),
             ),
-        ]
+        ],
     )
     q = note_to_question(anki_config, note)
     assert q.id == 1
@@ -196,13 +197,14 @@ def test_note_to_question_respects_config_tags():
         _keys=["code", "output"],
     )
     anki_config = AnkiConfig(
+        profile="jo",
         note_type_configs=[
             NoteTypeConfig(
                 name="code_output",
                 code_field=FieldConfig(name="code", pattern=re.compile(r"(?P<target>.*)")),
                 output_field=FieldConfig(name="output", pattern=re.compile(r"(?P<target>.*)")),
             ),
-        ]
+        ],
     )
     q = note_to_question(anki_config, note)
     assert q.check_output is False
