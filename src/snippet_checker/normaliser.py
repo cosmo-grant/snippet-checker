@@ -6,6 +6,7 @@ from itertools import count
 
 
 class OutputNormaliser(ABC):
+    @classmethod
     @abstractmethod
     def normalise(self, output: str, output_verbosity: int) -> str:
         raise NotImplementedError

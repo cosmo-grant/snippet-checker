@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import tomli_w
+from anki.notes import NoteId
 from anki.storage import Collection
 
 from .config import AnkiConfig, AnkiNoteConfig, DirectoryConfig, FieldConfig, NoteTypeConfig
@@ -20,7 +21,13 @@ if TYPE_CHECKING:
 
 def note_to_question(note_type_configs: list[NoteTypeConfig], timeout: float | None, note: Note) -> Question:
     """Convert an Anki note to a Question."""
-    note_type_config = next(config for config in note_type_configs if config.name == note.note_type()["name"])  # type: ignore[index]
+    # note.note_type() is typed as maybe returning None.
+    # But I think it never does actually. (Every note has a type, no?)
+    # TODO: extract into function, given repeated several times?
+    note_type = note.note_type()
+    assert note_type is not None
+    note_type_config = next(config for config in note_type_configs if config.name == note_type["name"])
+
     fields = dict(zip(note.keys(), note.fields, strict=True))
     code_field = fields[note_type_config.code_field.name]
     output_field = fields[note_type_config.output_field.name]
@@ -172,22 +179,27 @@ class AnkiRepository(Repository):
     def write_output(self, question: Question, output: str) -> None:
         "Replace the question's output field target by the given string."
         assert isinstance(question.id, int)
-        note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
+        note = self.collection.get_note(NoteId(question.id))
+        note_type = note.note_type()
+        assert note_type is not None
+        note_type_config = next(config for config in self.config.note_types if config.name == note_type["name"])
         update_field(note, note_type_config.output_field, output)
         self.collection.update_note(note)
 
     def write_code(self, question, code: str) -> None:
         "Replace the question's code field target by the given string."
         assert isinstance(question.id, int)
-        note = self.collection.get_note(question.id)  # type: ignore[arg-type]  # TODO: more systematic type conversion
-        note_type_config = next(config for config in self.config.note_types if config.name == note.note_type()["name"])  # type: ignore[index]
+        note = self.collection.get_note(NoteId(question.id))
+        note_type = note.note_type()
+        assert note_type is not None
+        note_type_config = next(config for config in self.config.note_types if config.name == note_type["name"])
         update_field(note, note_type_config.code_field, code)
         self.collection.update_note(note)
 
     def add_tag(self, question: Question, tag: Tag) -> None:
         "Write a tag to the given question indicating special treatment, e.g. don't check output."
-        note = self.collection.get_note(int(question.id))  # type: ignore[arg-type]  # TODO: more systematic type conversion
+        assert isinstance(question.id, int)
+        note = self.collection.get_note(NoteId(question.id))
         note.tags.append("snip:" + tag.value)  # TODO: avoid scattered hard-coded "snip:"
         self.collection.update_note(note)
 

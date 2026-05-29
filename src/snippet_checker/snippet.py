@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import ClassVar
 
 import docker
+import docker.errors
+import docker.models.containers
 
 logger = logging.getLogger(__name__)
 
