@@ -6,7 +6,7 @@ import tomllib
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Any, Protocol
 
 import tomli_w
 from anki.storage import Collection
@@ -14,11 +14,22 @@ from anki.storage import Collection
 from .config import AnkiConfig, AnkiNoteConfig, DirectoryConfig, FieldConfig, NoteTypeConfig
 from .question import Question, Tag
 
-if TYPE_CHECKING:
-    from anki.notes import Note
+
+class NoteProtocol(Protocol):
+    """Protocol for objects matching the Anki note interface used here."""
+
+    # Anki has: NoteId = NewType("NoteId", int)
+    # ty complains if we try id: int.
+    # Discretion is the better part of valour.
+    id: Any
+    fields: list[str]
+    tags: list[str]
+
+    def note_type(self) -> dict[str, Any] | None: ...  # anki says it can return None
+    def keys(self) -> list[str]: ...
 
 
-def get_matching_config(anki_config: AnkiConfig, note: Note) -> NoteTypeConfig:
+def get_matching_config(anki_config: AnkiConfig, note: NoteProtocol) -> NoteTypeConfig:
     "Return the config for the given note's type, matching by name."
     # note.note_type() is typed as maybe returning None.
     # But I think it never does actually. (Every note has a type, no?)
@@ -27,7 +38,7 @@ def get_matching_config(anki_config: AnkiConfig, note: Note) -> NoteTypeConfig:
     return next(config for config in anki_config.note_type_configs if config.name == note_type["name"])
 
 
-def note_to_question(anki_config: AnkiConfig, note: Note) -> Question:
+def note_to_question(anki_config: AnkiConfig, note: NoteProtocol) -> Question:
     """Convert an Anki note to a Question."""
     note_type_config = get_matching_config(anki_config, note)
     fields = dict(zip(note.keys(), note.fields, strict=True))
@@ -247,7 +258,7 @@ def replace_target(pattern: re.Pattern, current: str, target_repl: str) -> str:
     return current[:start] + escape_html(target_repl) + current[end:]
 
 
-def update_field(note: Note, field_config: FieldConfig, replacement: str) -> None:
+def update_field(note: NoteProtocol, field_config: FieldConfig, replacement: str) -> None:
     """
     Update a field of the note with the replacement, guided by the field config.
 
