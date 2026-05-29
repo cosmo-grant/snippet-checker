@@ -61,7 +61,7 @@ class NoteTypeConfig:
 class AnkiConfig:
     """Information required for checking an anki deck."""
 
-    note_types: list[NoteTypeConfig]
+    note_type_configs: list[NoteTypeConfig]
     profile: str | None = None
     collection_path: Path | None = None
     timeout: float | None = None
@@ -98,7 +98,7 @@ def get_anki_config() -> AnkiConfig:
         profile=raw.get("profile"),
         timeout=raw.get("timeout"),
         collection_path=Path(raw["collection_path"]) if "collection_path" in raw else None,
-        note_types=[
+        note_type_configs=[
             NoteTypeConfig(
                 name=note_config["note_type"],
                 code_field=FieldConfig(
