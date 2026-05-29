@@ -18,18 +18,18 @@ if TYPE_CHECKING:
     from anki.notes import Note
 
 
-def get_matching_config(note_type_configs: list[NoteTypeConfig], note: Note) -> NoteTypeConfig:
+def get_matching_config(anki_config: AnkiConfig, note: Note) -> NoteTypeConfig:
     "Return the config for the given note's type, matching by name."
     # note.note_type() is typed as maybe returning None.
     # But I think it never does actually. (Every note has a type, no?)
     note_type = note.note_type()
     assert note_type is not None
-    return next(config for config in note_type_configs if config.name == note_type["name"])
+    return next(config for config in anki_config.note_type_configs if config.name == note_type["name"])
 
 
-def note_to_question(note_type_configs: list[NoteTypeConfig], timeout: float | None, note: Note) -> Question:
+def note_to_question(anki_config: AnkiConfig, note: Note) -> Question:
     """Convert an Anki note to a Question."""
-    note_type_config = get_matching_config(note_type_configs, note)
+    note_type_config = get_matching_config(anki_config, note)
     fields = dict(zip(note.keys(), note.fields, strict=True))
     code_field = fields[note_type_config.code_field.name]
     output_field = fields[note_type_config.output_field.name]
@@ -46,7 +46,7 @@ def note_to_question(note_type_configs: list[NoteTypeConfig], timeout: float | N
         note_config.check_format,
         note_config.output_verbosity,
         note_config.compress,
-        timeout,
+        anki_config.timeout,
     )
 
 
@@ -176,22 +176,21 @@ class AnkiRepository(Repository):
         note_ids = self.collection.find_notes("")
         notes = [self.collection.get_note(id) for id in note_ids]
         self.notes = [note for note in notes if self.tag in note.tags]
-        return [note_to_question(self.config.note_types, self.config.timeout, note) for note in self.notes]
+        return [note_to_question(self.config, note) for note in self.notes]
 
     def write_output(self, question: Question, output: str) -> None:
         "Replace the question's output field target by the given string."
         assert isinstance(question.id, int)
-        note_type_config = get_matching_config(self.config.note_types, note)
         note = self.collection.get_note(question.id)  # ty: ignore[invalid-argument-type]
+        note_type_config = get_matching_config(self.config, note)
         update_field(note, note_type_config.output_field, output)
         self.collection.update_note(note)
 
-    def write_code(self, question, code: str) -> None:
     def write_code(self, question: Question, code: str) -> None:
         "Replace the question's code field target by the given string."
         assert isinstance(question.id, int)
-        note_type_config = get_matching_config(self.config.note_types, note)
         note = self.collection.get_note(question.id)  # ty: ignore[invalid-argument-type]
+        note_type_config = get_matching_config(self.config, note)
         update_field(note, note_type_config.code_field, code)
         self.collection.update_note(note)
 
