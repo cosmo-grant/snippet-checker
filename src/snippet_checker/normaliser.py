@@ -69,7 +69,7 @@ class PythonOutputNormaliser(OutputNormaliser):
 
     @classmethod
     def normalise_errnos(cls, output: str) -> str:
-        normalised = re.sub(cls.errno, "[Errno NNN]", output)
+        normalised = re.sub(cls.errno, "[Errno NN]", output)
         return normalised
 
 
