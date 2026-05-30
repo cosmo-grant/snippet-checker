@@ -2,29 +2,58 @@
 
 Check code snippets in anki or files via docker.
 
-## Quickstart
+<!--toc:start-->
+- [snippet-checker](#snippet-checker)
+  - [Install](#install)
+  - [How to check anki](#how-to-check-anki)
+    - [Write config](#write-config)
+    - [Add tags](#add-tags)
+    - [Run](#run)
+  - [How to check files](#how-to-check-files)
+    - [Structure your directory](#structure-your-directory)
+    - [Write config](#write-config-1)
+    - [Run](#run-1)
+  - [Examples](#examples)
+    - [Hello world](#hello-world)
+    - [Timing](#timing)
+    - [Normalising exceptions](#normalising-exceptions)
+    - [Normalising memory locations](#normalising-memory-locations)
+    - [Normalising errnos](#normalising-errnos)
+    - [Normalising hangs](#normalising-hangs)
+  - [Q&A](#qa)
+    - ["The" output?](#the-output)
+    - [What to do when `snippet-checker` complains?](#what-to-do-when-snippet-checker-complains)
+    - [Which languages can it check?](#which-languages-can-it-check)
+    - [Can I check snippets which use third-party packages?](#can-i-check-snippets-which-use-third-party-packages)
+    - [How sandboxed?](#how-sandboxed)
+    - [What formatters does it use?](#what-formatters-does-it-use)
+    - [What's no_compress?](#whats-nocompress)
+<!--toc:end-->
 
-Install:
+## Install
 
-```
+For example:
+
+```text
 uv tool install snippet-checker
 ```
 
-Requires Docker.
+## How to check anki
 
-### How to check anki
+### Write config
 
-In `~/.snippet-checker/` or `$XDG_CONFIG_HOME/snippet-checker/` write `snippet-checker.toml`:
+In `~/.snippet-checker/` or `$XDG_CONFIG_HOME/snippet-checker/` write `snippet-checker.toml`, e.g.
 
 ```toml
-# Name of your anki profile.
-profile = "cosmo"
+profile = "cosmo"  # Name of your anki profile, used to locate your collection.
+# You can set `collection_path = "/path/to/collection"` instead of setting the profile if you like.
+timeout = 10.0  # Seconds. The tool assumes any snippet that runs for longer than this is hanging.
 
-# Tell the tool how to extract the code and output from your notes.
+# The [[notes]] blocks describe how to extract the code and output from your notes.
 [[notes]]
-note_type = "Code output"
+note_type = "Code output"  # Must match anki exactly.
 
-# The field containing the code.
+# Information about the field containing the code.
 [notes.code_field]
 name = "Code"
 # Your field may contain markup, as well as the code.
@@ -33,17 +62,19 @@ name = "Code"
 # The markup is added back when the tool writes to anki.
 pattern = '(?s)^<pre><code class="lang-\w+?">(?P<target>.*)</code></pre>$'
 
-# The field containing the output.
+# Information about the field containing the output.
 [notes.output_field]
 name = "Output"
-# As above.
 # This pattern works for fields like '<pre><samp>2\n</samp></pre>'.
 pattern = "(?s)^<pre><samp>(?P<target>.*)</samp></pre>$"
 
-# Same again for each note type you want to check.
+# More [[notes]] blocks if needed, one per target note type.
 ```
 
+### Add tags
+
 In anki:
+
 - add a tag to the notes you want to check
   - e.g. `check_me`
 - add tags `snip:image:<image tag>` to the notes which have snippets
@@ -59,24 +90,30 @@ In anki:
 
 (Anki lets you batch edit tags: select the notes, right click, Notes > Add/Remove Tags.)
 
+### Run
+
+Ensure Docker is running.
+
 Check outputs:
 
-```
+```text
 snippet-checker --anki output check_me
 ```
 
 Check formatting:
 
-```
+```text
 snippet-checker --anki format check_me
 ```
 
 Pass `--interactive` to fix interactively.
 Pass `--fix` to auto-fix (back up your collection first).
 
-### Checking files
+## How to check files
 
-Structure your directory something like
+### Structure your directory
+
+Something like
 
 ```
 your_dir
@@ -97,7 +134,9 @@ your_dir
 │       └── output.txt
 ```
 
-Write a `snippet_checker.toml` file at `your_dir`'s root:
+### Write config
+
+At `your_dir`'s root write `snippet_checker.toml`, e.g.
 
 ```toml
 # Set how tracebacks, panics etc. are abbreviated.
@@ -121,15 +160,19 @@ check_format = false
 go = "golang:1.21"
 ```
 
+### Run
+
+Ensure Docker is running.
+
 Check outputs:
 
-```
+```text
 snippet-checker output your_dir
 ```
 
 Check formatting:
 
-```
+```text
 snippet-checker format your_dir
 ```
 
@@ -244,39 +287,93 @@ print(c)
 Memory addresses vary from run to run.
 The tool replaces them by consistent, simpler addresses.
 
+### Normalising errnos
+
+```python
+with open("does_not_exist") as f:
+  print(f.read())
+```
+
+```text
+FileNotFoundError: [Errno NN] No such file or directory: 'does_not_exist'
+```
+
+Errnos vary across platforms.
+The tool replaces them all with a placeholder.
+
+### Normalising hangs
+
+```python
+import socket
+
+srv = socket.create_server(("127.0.0.1", 65432))
+print("socket created")
+srv.accept()
+```
+
+```text
+socket created
+...
+```
+
+For a blocking socket (the default), `accept()` blocks until a connection is available.
+So this snippet hangs.
+The tool assumes a snippet is hanging if it runs for more than `timeout` seconds.
+It kills it, appends `...` on its own line to any output so far, and returns that as the output.
+
 ## Q&A
 
-### Which languages does it support?
+### "The" output?
 
-Python and Go robustly.
-JavaScript (Node), Ruby and Rust somewhat, but output normalisation is wip.
+A snippet's output is not determined by its code.
 
-### How sandboxed?
+We saw examples above:
+memory addresses vary across runs;
+errnos vary across platforms.
 
-The snippets run in Docker containers.
-No mounts or volumes.
+There are plenty more:
+
+- `print(os.environ["PWD"])`
+- `print(random.random())`
+- `socket.bind(('127.0.0.1', 65432))` errors if address is already in use
+- `open('foo')` errors if no such file
+- timing depends on machine, contention, ...
+- whether you run via `python -c 'some code'` or `python some_file.py`
+- which Python cli options you set (`-u`, `-v`, `-Wignore`, ...)
+- and so on
+
+What the tool tries to capture is the normal case, which I take to be:
+
+- `python some_file.py`
+- no cli options
+- minimal contention
+
+Where there is no normal, e.g. snippets whose output depends on the working directory or platform, the output the tool generates is undefined.
 
 ### What to do when `snippet-checker` complains?
 
 If you agree, then it's done its job and you can update the snippet or output.
 
 If you disagree, then you have options:
-  1. open an issue to adapt `snippet-checker` to handle your snippet
-  2. adapt your snippet to something `snippet-checker` can handle
-  3. tag your snippet so `snippet-checker` ignores it
+
+1. open an issue to adapt `snippet-checker` to handle your snippet
+2. adapt your snippet to something `snippet-checker` can handle
+3. tag your snippet so `snippet-checker` ignores it
 
 Some examples.
 
 `snippet-checker` can't handle
 
 ```python
-# assume my_file.txt is "first\nsecond\nthird\n"
+# Assume my_file.txt is "first\nsecond\nthird\n".
 with open("my_file.txt") as f:
     for x in f:
         print(x)
 ```
 
-but we can adapt the snippet to something it can handle:
+because it doesn't understand the comment.
+
+But we can adapt the snippet to something it can handle.
 
 ```python
 with open("my_file.txt", "w") as f:
@@ -286,6 +383,22 @@ with open("my_file.txt") as f:
     for x in f:
         print(x)
 ```
+
+Similarly, it can't handle
+
+```python
+print(({char for char in "a0b2b3" if char}))
+```
+
+because set order is non-deterministic.
+
+We could adapt it
+
+```python
+print(sorted({char for char in "a0b2b3" if char}))
+```
+
+or maybe the underlying points would be better captured differently.
 
 It can't handle this either
 
@@ -300,7 +413,7 @@ finally:
 ```
 
 and I don't see how to adapt the snippet or the tool.
-Better just add a tag so `snippet-checker` ignores it.
+Better just tag it so `snippet-checker` ignores it.
 
 Or a formatting example:
 
@@ -310,7 +423,65 @@ print("foo" "bar")
 
 `ruff` formats this as `print("foobar")`.
 But if the point of the question is to show implicit string concatenation,
-again better to add a tag so `snippet-checker` ignores it.
+again better to tag it so `snippet-checker` ignores it.
+
+### Which languages can it check?
+
+Python robustly.
+Go somewhat.
+JavaScript (Node), Ruby and Rust a bit.
+It's a matter of handling more normalisations and dealing with pathological cases.
+
+### Can I check snippets which use third-party packages?
+
+Yes.
+Just ensure an image is available (either locally or on Docker Hub) with that package set up.
+
+For example, suppose you want to test `numpy` snippets, such as
+
+```python
+import numpy as np
+
+a = np.array([[1, 1], [0, 1]])
+b = np.array([[2, 0], [3, 4]])
+
+print(a * b)
+```
+
+First, you could write a Dockerfile something like
+
+```Dockerfile
+FROM python:latest
+ARG numpy_version
+RUN <<EOF
+python -m venv numpy_env
+source numpy_env/bin/activate
+python -m pip install numpy==${numpy_version}
+EOF
+```
+
+Then run
+
+```text
+docker image build -t numpy:2.4.0 -f Dockerfile --build-arg numpy_version=2.4.0 .
+```
+
+Finally, for anki, set the target snippets' tags to `snip:image:numpy:2.4.0`,
+or, for files, set
+
+```toml
+[images]
+py = "numpy:2.4.0"
+```
+
+in the `snippet-checker.toml`.
+
+Now you can check them like normal.
+
+### How sandboxed?
+
+The snippets run in Docker containers.
+No mounts or volumes.
 
 ### What formatters does it use?
 
@@ -322,5 +493,5 @@ I'm thinking about how to make this customizable.
 
 Some formatters like double blank lines, e.g. between class definitions.
 But space is at a premium in anki notes.
-So by default when formatting anki double blanks are replaced by single blanks.
-To keep double blanks add a `snip:no_compress` tag.
+So by default when formatting anki double blanks are replaced by single.
+To keep doubles add a `snip:no_compress` tag.
