@@ -34,6 +34,7 @@ class PythonOutputNormaliser(OutputNormaliser):
         normalised = cls.normalise_memory_addresses(output)
         normalised = cls.normalise_traceback(normalised, output_verbosity)
         normalised = cls.normalise_location_info(normalised, output_verbosity)
+        normalised = cls.normalise_errnos(normalised)
 
         return normalised
 

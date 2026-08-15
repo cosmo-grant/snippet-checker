@@ -26,7 +26,7 @@ class TestPythonOutputNormaliser:
         ],
     )
     def test_normalise_traceback(self, output_verbosity, expected):
-        actual = PythonOutputNormaliser.normalise_traceback(
+        actual = PythonOutputNormaliser.normalise(
             "Traceback (most recent call last):\n"
             '  File "<string>", line 1, in <module>\n'
             "    1 / 0\n"
@@ -49,7 +49,7 @@ class TestPythonOutputNormaliser:
         ],
     )
     def test_normalise_location_info(self, output_verbosity, expected):
-        actual = PythonOutputNormaliser.normalise_location_info(
+        actual = PythonOutputNormaliser.normalise(
             "  File \"/tmp/main.py\", line 3\n    nonlocal x\n    ^^^^^^^^^^\nSyntaxError: no binding for nonlocal 'x' found\n",
             output_verbosity,
         )
@@ -57,22 +57,24 @@ class TestPythonOutputNormaliser:
         assert actual == expected
 
     def test_normalise_memory_address(self):
-        actual = PythonOutputNormaliser.normalise_memory_addresses(
-            "<__main__.C object at 0x104cfa450>\n<__main__.D object at 0x104cfa5d0>\n<__main__.C object at 0x104cfa450>\n"
+        actual = PythonOutputNormaliser.normalise(
+            "<__main__.C object at 0x104cfa450>\n<__main__.D object at 0x104cfa5d0>\n<__main__.C object at 0x104cfa450>\n",
+            0,
         )
         expected = "<__main__.C object at 0x100>\n<__main__.D object at 0x200>\n<__main__.C object at 0x100>\n"
 
         assert actual == expected
 
     def test_normalise_single_errno(self):
-        actual = PythonOutputNormaliser.normalise_errnos("OSError: [Errno 98] Address already in use")
+        actual = PythonOutputNormaliser.normalise("OSError: [Errno 98] Address already in use", 0)
         expected = "OSError: [Errno NN] Address already in use"
 
         assert actual == expected
 
     def test_normalise_multiple_errnos(self):
-        actual = PythonOutputNormaliser.normalise_errnos(
-            "OSError: [Errno 98] Address already in use\nFileNotFoundError: [Errno 2] No such file or directory: 'foo.txt'"
+        actual = PythonOutputNormaliser.normalise(
+            "OSError: [Errno 98] Address already in use\nFileNotFoundError: [Errno 2] No such file or directory: 'foo.txt'",
+            0,
         )
         expected = "OSError: [Errno NN] Address already in use\nFileNotFoundError: [Errno NN] No such file or directory: 'foo.txt'"
 
