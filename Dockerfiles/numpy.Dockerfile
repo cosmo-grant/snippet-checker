@@ -3,6 +3,6 @@ FROM python:latest
 ARG numpy_version
 RUN <<EOF
 python -m venv numpy_env
-source numpy_env/bin/activate
-python -m pip install numpy==${numpy_version}
+. numpy_env/bin/activate
+python -m pip install --no-cache-dir numpy==${numpy_version}
 EOF
