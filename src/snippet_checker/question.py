@@ -52,7 +52,7 @@ class Question:
             self.output_normaliser = RubyOutputNormaliser
         elif image.startswith("rust"):
             self.snippet = RustSnippet(code, image, formatter_image)
-            self.output_normaliser = RubyOutputNormaliser
+            self.output_normaliser = RustOutputNormaliser
         else:
             raise ValueError(f"Cannot tell language from image '{image}'")
         self.check_output = check_output
