@@ -112,8 +112,9 @@ def test_target_roundtrip(original):
 
 
 def test_anki_config_defaults():
-    config = AnkiNoteConfig(["image:python:3.13"])
+    config = AnkiNoteConfig(["image:python:3.13", "formatter_image:my-ruff:1.1"])
     assert config.image == "python:3.13"
+    assert config.formatter_image == "my-ruff:1.1"
     assert config.check_output is True
     assert config.check_format is True
     assert config.output_verbosity == 0
@@ -121,8 +122,11 @@ def test_anki_config_defaults():
 
 
 def test_anki_config_flags_override_defaults():
-    config = AnkiNoteConfig(["image:golang:1.25", "no_check_output", "no_check_format", "output_verbosity:2", "no_compress"])
+    config = AnkiNoteConfig(
+        ["image:golang:1.25", "formatter_image:my-gofmt:2.2", "no_check_output", "no_check_format", "output_verbosity:2", "no_compress"]
+    )
     assert config.image == "golang:1.25"
+    assert config.formatter_image == "my-gofmt:2.2"
     assert config.check_output is False
     assert config.check_format is False
     assert config.output_verbosity == 2
@@ -158,7 +162,7 @@ def test_note_to_question():
             "print(1 + 1)",
             "2\n",
         ],
-        tags=["snip:image:python:3.13"],
+        tags=["snip:image:python:3.13", "snip:formatter_image:ruff:1.1"],
         _note_type_name="code_output",
         _keys=["code", "output"],
     )
@@ -177,6 +181,7 @@ def test_note_to_question():
     assert q.snippet.code == "print(1 + 1)"
     assert q.given_output == "2\n"
     assert q.image == "python:3.13"
+    assert q.formatter_image == "ruff:1.1"
     assert q.check_output is True
     assert q.check_format is True
     assert q.compress is True
@@ -188,6 +193,7 @@ def test_note_to_question_respects_config_tags():
         fields=["", ""],
         tags=[
             "snip:image:python:3.13",
+            "snip:formatter_image:ruff:1.1",
             "snip:no_check_output",
             "snip:no_check_format",
             "snip:no_compress",
@@ -224,7 +230,10 @@ def test_directory_repository_get(tmp_path):
     (q2 / "main.go").write_text("package main")
 
     repo = DirectoryRepository(
-        DirectoryConfig(images={"py": "python:3.13", "go": "golang:1.25"}),
+        DirectoryConfig(
+            images={"py": "python:3.13", "go": "golang:1.25"},
+            formatter_images={"py": "ruff:1.1", "go": "gofmt:2.2"},
+        ),
         tmp_path,
     )
     questions = repo.get()
@@ -237,10 +246,12 @@ def test_directory_repository_get(tmp_path):
     assert py_q.snippet.code == "print(1)"
     assert py_q.given_output == "1\n"
     assert py_q.image == "python:3.13"
+    assert py_q.formatter_image == "ruff:1.1"
 
     assert go_q.snippet.code == "package main"
     assert go_q.given_output == ""
     assert go_q.image == "golang:1.25"
+    assert go_q.formatter_image == "gofmt:2.2"
     assert (q2 / "output.txt").exists()
 
 
@@ -251,7 +262,7 @@ def test_directory_repository_per_question_config_overrides_root(tmp_path):
     (q1 / "snippet_checker.toml").write_text("check_output = false\n")
 
     repo = DirectoryRepository(
-        DirectoryConfig(images={"py": "python:3.13"}, check_output=True),
+        DirectoryConfig(images={"py": "python:3.13"}, formatter_images={"py": "ruff:1.1"}, check_output=True),
         tmp_path,
     )
     questions = repo.get()
@@ -274,6 +285,7 @@ def test_directory_repository_add_tag_creates_config(tmp_path):
         id=tmp_path / "main.py",
         code="",
         image="python:3.13",
+        formatter_image="my-ruff:1.1",
         given_output="",
         check_output=True,
         check_format=True,
@@ -282,10 +294,7 @@ def test_directory_repository_add_tag_creates_config(tmp_path):
         timeout=None,
     )
 
-    repo = DirectoryRepository(
-        DirectoryConfig(images={"py": "python:3.13"}),
-        tmp_path,
-    )
+    repo = DirectoryRepository(DirectoryConfig(), tmp_path)
     repo.add_tag(question, Tag.REVIEW)
 
     with open(tmp_path / "snippet_checker.toml", "rb") as f:
@@ -300,6 +309,7 @@ def test_directory_repository_add_tag_idempotent(tmp_path):
         id=tmp_path / "main.py",
         code="",
         image="python:3.13",
+        formatter_image="my-ruff:1.1",
         given_output="",
         check_output=True,
         check_format=True,
@@ -307,10 +317,7 @@ def test_directory_repository_add_tag_idempotent(tmp_path):
         compress=False,
         timeout=None,
     )
-    repo = DirectoryRepository(
-        DirectoryConfig(images={"py": "python:3.13"}),
-        tmp_path,
-    )
+    repo = DirectoryRepository(DirectoryConfig(), tmp_path)
     repo.add_tag(question, Tag.REVIEW)
 
     with open(tmp_path / "snippet_checker.toml", "rb") as f:
@@ -325,6 +332,7 @@ def test_directory_repository_add_tag_merges_existing(tmp_path):
         id=tmp_path / "main.py",
         code="",
         image="python:3.13",
+        formatter_image="my-ruff:1.1",
         given_output="",
         check_output=True,
         check_format=True,

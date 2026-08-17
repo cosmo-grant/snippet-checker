@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 h = { a: [1] }
 vals = h.values
 h[:a].push(2)

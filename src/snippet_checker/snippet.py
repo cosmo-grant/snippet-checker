@@ -187,18 +187,28 @@ def to_string(logs: list[tuple[float, bytes]], hanged: bool = False) -> str:
 class Snippet(ABC):
     """Abstract base class for code snippets in some language."""
 
-    def __init__(self, code: str, image: str):
+    def __init__(self, code: str, image: str, formatter_image: str):
         self.code = code
         self.image = image
+        self.formatter_image = formatter_image
         self.executor = DockerExecutor()
 
     @abstractmethod
     def output(self, timeout: float | None) -> str:
         raise NotImplementedError
 
-    @abstractmethod
     def format(self, compress: bool) -> str | None:
-        raise NotImplementedError
+        with self.executor.get_container(self.formatter_image) as container:
+            self.executor.write(container, self.code, Path("/tmp/input"))
+            exit_code, _ = self.executor.exec_run(container, ["./format.sh"])
+            _, bytes_ = self.executor.exec_run(container, ["cat", "/tmp/output"])
+            if exit_code != 0:
+                formatted = None
+            else:
+                formatted = bytes_.decode("utf-8")
+                if compress:
+                    formatted = formatted.replace("\n\n\n", "\n\n")  # crude
+            return formatted
 
 
 class PythonSnippet(Snippet):
@@ -218,20 +228,6 @@ class PythonSnippet(Snippet):
                 },
             )
 
-    def format(self, compress: bool) -> str | None:
-        dest = Path("/tmp/main.py")
-        with self.executor.get_container(self.image) as container:
-            self.executor.write(container, self.code, dest)
-            exit_code, _ = self.executor.exec_run(container, ["/bin/sh", "-c", f"python -m pip install ruff && ruff format {dest}"])
-            _, bytes_ = self.executor.exec_run(container, ["cat", str(dest)])
-            if exit_code != 0:
-                formatted = None
-            else:
-                formatted = bytes_.decode("utf-8")
-                if compress:
-                    formatted = formatted.replace("\n\n\n", "\n\n")  # crude
-            return formatted
-
 
 class GoSnippet(Snippet):
     "A Go code snippet."
@@ -247,21 +243,6 @@ class GoSnippet(Snippet):
             )
             return self.executor.exec_run_timed(container, ["/tmp/main"], timeout)
 
-    def format(self, compress: bool = False) -> str | None:
-        dest = Path("/tmp/main.go")
-        with self.executor.get_container(self.image) as container:
-            self.executor.write(container, self.code, dest)
-            exit_code, _ = self.executor.exec_run(container, ["go", "fmt", str(dest)])
-            if exit_code != 0:
-                formatted = None
-            else:
-                _, output = self.executor.exec_run(container, ["cat", str(dest)])
-                formatted = output.decode("utf-8")
-                if compress:
-                    formatted = formatted.strip().replace("\n\n\n", "\n\n")
-
-            return formatted
-
 
 class NodeSnippet(Snippet):
     "A Node code snippet."
@@ -271,21 +252,6 @@ class NodeSnippet(Snippet):
         with self.executor.get_container(self.image) as container:
             self.executor.write(container, self.code, dest)
             return self.executor.exec_run_timed(container, ["node", str(dest)], timeout, environment={"NO_COLOR": "1"})
-
-    def format(self, compress: bool = False) -> str | None:
-        dest = Path("/tmp/main.js")
-        with self.executor.get_container(self.image) as container:
-            self.executor.write(container, self.code, dest)
-            exit_code, _ = self.executor.exec_run(container, ["/bin/sh", "-c", f"npx prettier --write {dest}"])
-            _, bytes_ = self.executor.exec_run(container, ["cat", str(dest)])
-            if exit_code != 0:
-                formatted = None
-            else:
-                formatted = bytes_.decode("utf-8")
-                if compress:
-                    formatted = formatted.replace("\n\n\n", "\n\n")  # crude
-
-            return formatted
 
 
 class RubySnippet(Snippet):
@@ -297,23 +263,6 @@ class RubySnippet(Snippet):
             self.executor.write(container, self.code, dest)
             return self.executor.exec_run_timed(container, ["ruby", str(dest)], timeout)
 
-    def format(self, compress: bool = False) -> str | None:
-        dest = Path("/tmp/main.rb")
-        with self.executor.get_container(self.image) as container:
-            self.executor.write(container, self.code, dest)
-            exit_code, _ = self.executor.exec_run(
-                container, ["/bin/sh", "-c", f"gem install rubocop && rubocop -A {dest}"]
-            )  # FIXME: e2e fails
-            _, bytes_ = self.executor.exec_run(container, ["cat", str(dest)])
-            if exit_code != 0:
-                formatted = None
-            else:
-                formatted = bytes_.decode("utf-8")
-                if compress:
-                    formatted = formatted.replace("\n\n\n", "\n\n")  # crude
-
-            return formatted
-
 
 class RustSnippet(Snippet):
     "A Rust code snippet."
@@ -324,22 +273,6 @@ class RustSnippet(Snippet):
             self.executor.write(container, self.code, dest)
             self.executor.exec_run(container, ["rustc", "main.rs"], workdir="/tmp")
             return self.executor.exec_run_timed(container, ["/tmp/main"], timeout)
-
-    def format(self, compress: bool = False) -> str | None:
-        dest = Path("/tmp/main.rs")
-        with self.executor.get_container(self.image) as container:
-            self.executor.exec_run(container, ["rustup", "component", "add", "rustfmt"])
-            self.executor.write(container, self.code, dest)
-            exit_code, _ = self.executor.exec_run(container, ["rustfmt", str(dest)])
-            _, bytes_ = self.executor.exec_run(container, ["cat", str(dest)])
-            if exit_code != 0:
-                formatted = None
-            else:
-                formatted = bytes_.decode("utf-8")
-                if compress:
-                    formatted = formatted.replace("\n\n\n", "\n\n")  # crude
-
-            return formatted
 
 
 # TODO: what about ctrl-c?

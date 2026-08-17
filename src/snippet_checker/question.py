@@ -20,6 +20,7 @@ class Question:
         id: int | Path,
         code: str,
         image: str,
+        formatter_image: str,
         given_output: str,
         check_output: bool,
         check_format: bool,
@@ -30,6 +31,7 @@ class Question:
     ):
         self.id = id
         self.image = image
+        self.formatter_image = formatter_image
         self.given_output = given_output
         self.output_verbosity = output_verbosity
         self.compress = compress
@@ -37,19 +39,19 @@ class Question:
         self.snippet: Snippet
         self.output_normaliser: type[OutputNormaliser]
         if image.startswith("golang"):
-            self.snippet = GoSnippet(code, image)
+            self.snippet = GoSnippet(code, image, formatter_image)
             self.output_normaliser = GoOutputNormaliser
         elif image.startswith("python") or image.startswith("numpy"):
-            self.snippet = PythonSnippet(code, image)
+            self.snippet = PythonSnippet(code, image, formatter_image)
             self.output_normaliser = PythonOutputNormaliser
         elif image.startswith("node"):
-            self.snippet = NodeSnippet(code, image)
+            self.snippet = NodeSnippet(code, image, formatter_image)
             self.output_normaliser = NodeOutputNormaliser
         elif image.startswith("ruby"):
-            self.snippet = RubySnippet(code, image)
+            self.snippet = RubySnippet(code, image, formatter_image)
             self.output_normaliser = RubyOutputNormaliser
         elif image.startswith("rust"):
-            self.snippet = RustSnippet(code, image)
+            self.snippet = RustSnippet(code, image, formatter_image)
             self.output_normaliser = RubyOutputNormaliser
         else:
             raise ValueError(f"Cannot tell language from image '{image}'")

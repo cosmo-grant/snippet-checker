@@ -77,10 +77,14 @@ In anki:
 
 - add a tag to the notes you want to check
   - e.g. `check_me`
-- add tags `snip:image:<image tag>` to the notes which have snippets
+- to check the outputs, add a tag `snip:image:<image tag>` to the notes
   - e.g. `snip:image:python:3.13`
-  - sets the image in which the tool runs that note's snippet
+  - sets the image the tool uses to run that note's snippet
   - the image is pulled via `docker image pull <image tag>`
+- to check formatting, add a tag `snip:formatter_image:<image tag>` to the notes
+  - e.g. `snip:formatter_image:my_python_formatter:1.2.3`
+  - sets the image the tool uses to format that note's snippet
+  - the image must satisfy a contract - see [Formatter images](#Formatter-images)
 - add other tags to customize how the tool treats them
   - `snip:no_check_format` to skip when checking formatting
   - `snip:no_check_output` to skip when checking outputs
@@ -142,13 +146,21 @@ At `your_dir`'s root write `snippet_checker.toml`, e.g.
 # Set how tracebacks, panics etc. are abbreviated.
 output_verbosity = 0  # Or 1 or 2.
 
-# Set image tags.
+# Set image tags (the snippets are executed using these)
 [images]
 js = "node:22"
 rb = "ruby:2.7"
 py = "python:3.14"
 go = "golang:1.23"
 rs = "rust:1.93"
+
+# Set formatter image tags (the snippets are formatted using these)
+[formatter_images]
+js = "my-prettier:1.2"
+rb = "my-rubocop:1.2"
+py = "my-ruff:1.2"
+go = "my-gofmt:1.2"
+rs = "my-rustfmt:1.2"
 ```
 
 To override a setting for a particular snippet, add another `snippet_checker.toml` alongside it:
@@ -178,6 +190,62 @@ snippet-checker format your_dir
 
 Pass `--interactive` to fix interactively.
 Pass `--fix` to auto-fix (version control your collection first).
+
+## Formatter images
+
+Bring your own.
+The contract:
+  - the image must have a `format.sh` script in the working directory
+  - which can be executed via `./format.sh`
+  - and which reads `/tmp/input` and writes the formatted version to `/tmp/output`
+  - and which exits 0 just if there was no error when formatting (whether or not changes were made)
+
+For example, to format Python snippets you could create
+
+```
+my-python-formatter
+├── Dockerfile
+└── format.sh
+```
+
+where `format.sh` is
+
+```sh
+#!/bin/sh
+set -eu
+ruff format /tmp/input
+mv /tmp/input /tmp/output
+```
+
+and the `Dockerfile` is
+
+```Dockerfile
+FROM ghcr.io/astral-sh/ruff:0.16-alpine
+ENTRYPOINT [ "" ]
+COPY format.sh .
+```
+
+Then:
+
+```sh
+chmod +x format.sh
+docker image build -t my-python-formatter:1.2 .
+```
+
+For anki, tag the target notes `snip:formatter_image:my-python-formatter:1.2`,
+or, for files, add
+
+```toml
+[formatter_images]
+py = "my-python-formatter:1.2"
+```
+
+to the `snippet_checker.toml`.
+
+Then you're good to go.
+
+Con: you need to do this set-up yourself.
+Pro: you get to pick your own formatter and configuration.
 
 ## Examples
 
@@ -485,9 +553,8 @@ No mounts or volumes.
 
 ### What formatters does it use?
 
-A fixed formatter with default configuration for each language:
-`ruff`, `prettier`, `gofmt`, `rubocop`, `rustfmt`.
-I'm thinking about how to make this customizable.
+Bring your own.
+See [Formatter images](#formatter-images).
 
 ### What's no_compress?
 

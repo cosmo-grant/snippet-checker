@@ -18,6 +18,7 @@ class DirectoryConfig:
     """Information required for checking a directory of snippets."""
 
     images: dict[str, str] = field(default_factory=dict)
+    formatter_images: dict[str, str] = field(default_factory=dict)
     check_format: bool = True
     check_output: bool = True
     output_verbosity: int = 1
@@ -135,6 +136,7 @@ class AnkiNoteConfig:
 
     def __init__(self, tags: list[str]) -> None:
         self.image = next(tag for tag in tags if tag.startswith("image:")).removeprefix("image:")
+        self.formatter_image = next(tag for tag in tags if tag.startswith("formatter_image:")).removeprefix("formatter_image:")
         self.check_output = Tag.NO_CHECK_OUTPUT.value not in tags
         self.check_format = Tag.NO_CHECK_FORMAT.value not in tags
         try:
