@@ -143,7 +143,7 @@ class NodeOutputNormaliser(OutputNormaliser):
         if output_verbosity == 0:
             normalised = re.sub(cls.traceback, r"\g<key_line>", output)
         elif output_verbosity == 1:
-            pass
+            normalised = re.sub(cls.traceback, r"\g<key_line>", output)
         elif output_verbosity == 2:
             normalised = output
 
