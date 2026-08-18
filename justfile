@@ -3,5 +3,9 @@ checks:
   uv run ruff format --exclude test/e2e/snippets src test
   uv run ty check --exclude test/e2e/snippets src test
 
-images:
-  ls Dockerfiles/formatters | parallel 'cd Dockerfiles/formatters/{} && docker image build -t test-{} . && cd -'
+formatter-images:
+  ls images/formatters | parallel 'cd images/formatters/{} && docker image build -t test-{} . && cd -'
+
+runner-images:
+  ls images/runners | parallel 'cd images/runners/{} && docker image build -t test-{} . && cd -'
+
