@@ -51,7 +51,7 @@ def note_to_question(anki_config: AnkiConfig, note: NoteProtocol) -> Question:
     return Question(
         note.id,
         code,
-        note_config.image,
+        note_config.runner_image,
         note_config.formatter_image,
         output,
         note_config.check_output,
@@ -119,7 +119,7 @@ class DirectoryRepository(Repository):
                 Question(
                     id=snippet_path,
                     code=code,
-                    image=config.images[snippet_path.suffix.removeprefix(".")],
+                    runner_image=config.runner_images[snippet_path.suffix.removeprefix(".")],
                     formatter_image=config.formatter_images[snippet_path.suffix.removeprefix(".")],
                     given_output=output,
                     check_output=config.check_output,

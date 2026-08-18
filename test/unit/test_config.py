@@ -33,8 +33,8 @@ def test_get_directory_config_path_returns_none_when_no_config(tmp_path):
 
 
 def test_get_directory_config(tmp_path):
-    (tmp_path / "snippet_checker.toml").write_text('[images]\npy = "python:3.13"\n')
-    assert get_directory_config(tmp_path) == DirectoryConfig(images={"py": "python:3.13"})
+    (tmp_path / "snippet_checker.toml").write_text('[runner_images]\npy = "python:3.13"\n')
+    assert get_directory_config(tmp_path) == DirectoryConfig(runner_images={"py": "python:3.13"})
 
 
 def test_get_anki_config_path(tmp_path, monkeypatch):

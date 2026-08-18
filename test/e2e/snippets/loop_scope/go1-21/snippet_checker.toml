@@ -1,5 +1,5 @@
-[images]
-go = "golang:1.21"
+[runner_images]
+go = "test-golang:1.21"
 
 [formatter_images]
 go = "test-gofmt:1.21"

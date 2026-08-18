@@ -33,5 +33,5 @@ def anki_collection(tmp_path):
     python_note = collection.new_note(model)
     python_note.fields[0] = "print(1 + 1)\n"
     python_note.fields[1] = "2\n"
-    python_note.tags = ["check_me", "snip:image:python:3.13", "snip:formatter_image:test-ruff"]
+    python_note.tags = ["check_me", "snip:runner_image:test-python:3.13", "snip:formatter_image:test-ruff"]
     collection.add_note(python_note, deck["id"])

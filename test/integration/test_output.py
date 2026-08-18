@@ -2,33 +2,33 @@ from __future__ import annotations
 
 import pytest
 
-from snippet_checker.snippet import GoSnippet, NodeSnippet, PythonSnippet, RubySnippet, RustSnippet
+from snippet_checker.snippet import Snippet
 
 
 class TestPythonOutput:
     def test_hello(self):
         code = 'print("hello")\n'
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert snippet.output(timeout=None) == "hello\n"
 
-    def test_hello_sleep_world(self):
+    def test_python_hello_sleep_world(self):
         code = 'import time\n\nprint("hello")\ntime.sleep(1)\nprint("world")\n'
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert snippet.output(timeout=None) == "hello\n<~1s>\nworld\n"
 
     def test_hello_no_newline_sleep_world(self):
         code = 'import time\n\nprint("hello", end="")\ntime.sleep(1)\nprint("world")\n'
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert snippet.output(timeout=None) == "<~1s>\nhelloworld\n"
 
     def test_sleep_hello(self):
         code = 'import time\n\ntime.sleep(1)\nprint("hello")\n'
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert snippet.output(timeout=None) == "<~1s>\nhello\n"
 
     def test_hello_exception(self):
         code = 'print("hello")\nraise Exception'
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert (
             snippet.output(timeout=None) == "hello\n"
             "Traceback (most recent call last):\n"
@@ -39,20 +39,20 @@ class TestPythonOutput:
 
     def test_timeout(self):
         code = 'import time\nprint("here")\ntime.sleep(2)'
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert snippet.output(timeout=1) == "here\n...\n"
 
     @pytest.mark.xfail
     def test_hello_no_newline_flush_sleep_world(self):
         code = 'import time\n\nprint("hello", end="", flush=True)\ntime.sleep(3)\nprint("world")\n'
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert snippet.output(timeout=None) == "hello\n<~3s>\nworld\n"
 
     # TODO: investigate
     @pytest.mark.xfail
     def test_carriage_return(self):
         code = 'print("foo\\rbar")'
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert snippet.output(timeout=None) == "bar"
 
     # TODO: investigate
@@ -64,26 +64,26 @@ class TestPythonOutput:
             's2 = "can\N{COMBINING TILDE}a\n'
             "print(s1, s2)\n"
         )
-        snippet = PythonSnippet(code, "python:3.13", formatter_image="my-ruff:1.1")
+        snippet = Snippet(code, "test-python:3.13", formatter_image="test-ruff:1.1")
         assert snippet.output(timeout=None) == "caña caña"
 
 
 class TestGoOutput:
     def test_hello(self):
         code = 'package main\nimport "fmt"\nfunc main() { fmt.Println("hello") }\n'
-        snippet = GoSnippet(code, "golang:1.24", formatter_image="my-gofmt:1.1")
+        snippet = Snippet(code, "test-golang:1.25", formatter_image="test-gofmt:1.1")
         assert snippet.output(timeout=None) == "hello\n"
 
 
 class TestNodeOutput:
     def test_hello(self):
         code = 'console.log("hello");\n'
-        snippet = NodeSnippet(code, "node:22", "my-prettier:1.1")
+        snippet = Snippet(code, "test-node:24.13", "test-prettier:1.1")
         assert snippet.output(timeout=None) == "hello\n"
 
     def test_hello_error(self):
         code = 'console.log("hello");\nconsole.log(x)'
-        snippet = NodeSnippet(code, "node:24.13.1", "my-prettier:1.1")
+        snippet = Snippet(code, "test-node:24.13", "test-prettier:1.1")
         assert (
             snippet.output(timeout=None)
             == """hello
@@ -110,12 +110,12 @@ Node.js v24.13.1
 class TestRubyOutput:
     def test_hello(self):
         code = 'puts "hello"\n'
-        snippet = RubySnippet(code, "ruby:3.4", "my-rubocop:1.1")
+        snippet = Snippet(code, "test-ruby:3.4", "test-rubocop:1.1")
         assert snippet.output(timeout=None) == "hello\n"
 
 
 class TestRustOutput:
     def test_hello(self):
         code = 'fn main() { println!("hello"); }\n'
-        snippet = RustSnippet(code, "rust:1.84", "my-rustfmt:1.1")
+        snippet = Snippet(code, "test-rust:1.84", "test-rustfmt:1.1")
         assert snippet.output(timeout=None) == "hello\n"

@@ -1,11 +1,11 @@
 output_verbosity = 0
 
-[images]
-js = "node:22"
-rb = "ruby:2.7"
-py = "python:3.14"
-go = "golang:1.23"
-rs = "rust:1.93"
+[runner_images]
+js = "test-node:24.13"
+rb = "test-ruby:3.4"
+py = "test-python:3.13"
+go = "test-golang:1.25"
+rs = "test-rust:1.84"
 
 [formatter_images]
 js = "test-prettier"

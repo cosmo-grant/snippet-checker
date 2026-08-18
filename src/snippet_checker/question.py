@@ -1,8 +1,8 @@
 from enum import Enum
 from pathlib import Path
 
-from .normaliser import GoOutputNormaliser, NodeOutputNormaliser, OutputNormaliser, PythonOutputNormaliser, RubyOutputNormaliser
-from .snippet import GoSnippet, NodeSnippet, PythonSnippet, RubySnippet, RustSnippet, Snippet
+from .normaliser import OutputNormaliser
+from .snippet import Snippet
 
 
 class Tag(Enum):
@@ -19,7 +19,7 @@ class Question:
         self,
         id: int | Path,
         code: str,
-        image: str,
+        runner_image: str,
         formatter_image: str,
         given_output: str,
         check_output: bool,
@@ -30,35 +30,18 @@ class Question:
         review: bool = False,
     ):
         self.id = id
-        self.image = image
+        self.runner_image = runner_image
         self.formatter_image = formatter_image
         self.given_output = given_output
         self.output_verbosity = output_verbosity
         self.compress = compress
         self.timeout = timeout
         self.snippet: Snippet
-        self.output_normaliser: type[OutputNormaliser]
-        if image.startswith("golang"):
-            self.snippet = GoSnippet(code, image, formatter_image)
-            self.output_normaliser = GoOutputNormaliser
-        elif image.startswith("python") or image.startswith("numpy"):
-            self.snippet = PythonSnippet(code, image, formatter_image)
-            self.output_normaliser = PythonOutputNormaliser
-        elif image.startswith("node"):
-            self.snippet = NodeSnippet(code, image, formatter_image)
-            self.output_normaliser = NodeOutputNormaliser
-        elif image.startswith("ruby"):
-            self.snippet = RubySnippet(code, image, formatter_image)
-            self.output_normaliser = RubyOutputNormaliser
-        elif image.startswith("rust"):
-            self.snippet = RustSnippet(code, image, formatter_image)
-            self.output_normaliser = RustOutputNormaliser
-        else:
-            raise ValueError(f"Cannot tell language from image '{image}'")
+        self.snippet = Snippet(code, runner_image, formatter_image)
         self.check_output = check_output
         self.check_format = check_format
         self.review = review
 
     def normalised_actual_output(self):
         actual_output = self.snippet.output(self.timeout)
-        return self.output_normaliser.normalise(actual_output, output_verbosity=self.output_verbosity)
+        return OutputNormaliser.normalise(actual_output, output_verbosity=self.output_verbosity)
