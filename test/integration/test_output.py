@@ -68,6 +68,13 @@ class TestPythonOutput:
         assert snippet.output(timeout=None) == "caña caña"
 
 
+class TestNumpyOutput:
+    def test_elementwise_array_comparison(self):
+        code = "import numpy as np\na = np.array([10, 20, 30, 40])\nprint((a - 5) < 18)\n"
+        snippet = Snippet(code, "test-numpy:2.5", formatter_image="test-ruff:1.1")
+        assert snippet.output(timeout=None) == "[ True  True False False]\n"
+
+
 class TestGoOutput:
     def test_hello(self):
         code = 'package main\nimport "fmt"\nfunc main() { fmt.Println("hello") }\n'

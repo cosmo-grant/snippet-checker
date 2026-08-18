@@ -1,2 +1,2 @@
 #!/bin/sh
-mv ./main ./main.py
+mv main main.py
