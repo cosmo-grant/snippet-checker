@@ -13,6 +13,9 @@ Check code snippets in anki or files via docker.
     - [Structure your directory](#structure-your-directory)
     - [Write config](#write-config-1)
     - [Run](#run-1)
+  - [Bring your own images](#bring-your-own-images)
+    - [Runner images](#runner-images)
+    - [Formatter images](#formatter-images)
   - [Examples](#examples)
     - [Hello world](#hello-world)
     - [Timing](#timing)
@@ -77,14 +80,11 @@ In anki:
 
 - add a tag to the notes you want to check
   - e.g. `check_me`
-- to check the outputs, add a tag `snip:image:<image tag>` to the notes
-  - e.g. `snip:image:python:3.13`
-  - sets the image the tool uses to run that note's snippet
-  - the image is pulled via `docker image pull <image tag>`
+- to check the outputs, add a tag `snip:runner_image:<image tag>` to the notes
+  - e.g. `snip:runner_image:my-python-runner:3.13`
 - to check formatting, add a tag `snip:formatter_image:<image tag>` to the notes
-  - e.g. `snip:formatter_image:my_python_formatter:1.2.3`
-  - sets the image the tool uses to format that note's snippet
-  - the image must satisfy a contract - see [Formatter images](#Formatter-images)
+  - e.g. `snip:formatter_image:my-python-formatter:1.2.3`
+- the images must satisfy a contract - see [Bring your own images](#bring-your-own-images)
 - add other tags to customize how the tool treats them
   - `snip:no_check_format` to skip when checking formatting
   - `snip:no_check_output` to skip when checking outputs
@@ -146,21 +146,17 @@ At `your_dir`'s root write `snippet_checker.toml`, e.g.
 # Set how tracebacks, panics etc. are abbreviated.
 output_verbosity = 0  # Or 1 or 2.
 
-# Set image tags (the snippets are executed using these)
-[images]
-js = "node:22"
-rb = "ruby:2.7"
-py = "python:3.14"
-go = "golang:1.23"
-rs = "rust:1.93"
+# Set runner image tags (the snippets are executed using these)
+[runner_images]
+js = "my-javascript-runner:24.13"
+py = "my-python-runner:3.14"
+go = "my-go-runner:1.23"
 
 # Set formatter image tags (the snippets are formatted using these)
 [formatter_images]
-js = "my-prettier:1.2"
-rb = "my-rubocop:1.2"
-py = "my-ruff:1.2"
-go = "my-gofmt:1.2"
-rs = "my-rustfmt:1.2"
+js = "my-javascript-formatter:1.2"
+py = "my-python-formatter:1.2"
+go = "my-go-formatter:1.2"
 ```
 
 To override a setting for a particular snippet, add another `snippet_checker.toml` alongside it:
@@ -168,8 +164,8 @@ To override a setting for a particular snippet, add another `snippet_checker.tom
 ```toml
 check_format = false
 
-[images]
-go = "golang:1.21"
+[runner_images]
+go = "my-go-runner:1.21"
 ```
 
 ### Run
@@ -191,14 +187,83 @@ snippet-checker format your_dir
 Pass `--interactive` to fix interactively.
 Pass `--fix` to auto-fix (version control your collection first).
 
-## Formatter images
+## Bring your own images
 
-Bring your own.
-The contract:
-  - the image must have a `format.sh` script in the working directory
-  - which can be executed via `./format.sh`
-  - and which reads `/tmp/input` and writes the formatted version to `/tmp/output`
-  - and which exits 0 just if there was no error when formatting (whether or not changes were made)
+You need to create your own runner and formatter images.
+A hassle, yes.
+But it means you can check snippets in any language, against any runtime version, with any dependencies,
+and can control runtime and formatting configuration.
+
+### Runner images
+
+Contract:
+
+- the image must have `prepare.sh`, `run.sh` scripts in the working directory
+- which can be executed via `./prepare.sh`, `run.sh`
+- the tool copies the snippet into the image's working directory as `main`
+- `prepare.sh` does any setup, e.g. compilation, install dependencies
+- `run.sh` executes the snippet
+
+For example, to run Go snippets you could create
+
+```
+my-go-runner
+├── Dockerfile
+└── prepare.sh
+└── run.sh
+```
+
+where `prepare.sh` is
+
+```sh
+#!/bin/sh
+mv main main.go
+go build main.go
+```
+
+and `run.sh` is
+
+```sh
+#!/bin/sh
+./main
+```
+
+and the `Dockerfile` is
+
+```Dockerfile
+FROM golang:1.21
+WORKDIR /tmp
+COPY prepare.sh run.sh ./
+```
+
+(More examples in `images/runners/` in the source.)
+
+Then
+
+```sh
+chmod +x prepare.sh
+chmod +x run.sh
+docker image build -t my-go-runner:1.21 .
+```
+
+For anki, tag the target notes `snip:runner_image:my-go-runner:1.21`,
+or, for files, add
+
+```toml
+[formatter_images]
+py = "my-go-runner:1.21"
+```
+
+to the `snippet_checker.toml`.
+
+### Formatter images
+
+Contract:
+
+- the image must have a `format.sh` script in the working directory
+- which can be executed via `./format.sh`
+- and which reads `/tmp/input` and writes the formatted version to `/tmp/output`
+- and which exits 0 just if there was no error when formatting (whether or not changes were made)
 
 For example, to format Python snippets you could create
 
@@ -225,7 +290,9 @@ ENTRYPOINT [ "" ]
 COPY format.sh .
 ```
 
-Then:
+(More examples in `images/runners/` in the source.)
+
+Then
 
 ```sh
 chmod +x format.sh
@@ -242,16 +309,10 @@ py = "my-python-formatter:1.2"
 
 to the `snippet_checker.toml`.
 
-Then you're good to go.
-
-Con: you need to do this set-up yourself.
-Pro: you get to pick your own formatter and configuration.
-
 ## Examples
 
-`snippet-checker` runs the code as though at the command line
-(`python main.py`, `node main.js`, `go build main.go` then `/main`, etc)
-then constructs _timed, normalised_ outputs.
+`snippet-checker` checks your snippet's _timed, normalised_ output
+(or, really, `run.sh`'s).
 
 ### Hello world
 
@@ -410,13 +471,9 @@ There are plenty more:
 - which Python cli options you set (`-u`, `-v`, `-Wignore`, ...)
 - and so on
 
-What the tool tries to capture is the normal case, which I take to be:
-
-- `python some_file.py`
-- no cli options
-- minimal contention
-
-Where there is no normal, e.g. snippets whose output depends on the working directory or platform, the output the tool generates is undefined.
+Some variation you can pin down via your runner image.
+But maybe not all,
+in which case the tool can only tell you _an_ output, not _the_ output.
 
 ### What to do when `snippet-checker` complains?
 
@@ -424,9 +481,10 @@ If you agree, then it's done its job and you can update the snippet or output.
 
 If you disagree, then you have options:
 
-1. open an issue to adapt `snippet-checker` to handle your snippet
-2. adapt your snippet to something `snippet-checker` can handle
-3. tag your snippet so `snippet-checker` ignores it
+1. adapt your image so the output `snippet-checker` generates matches what you expect
+2. open an issue to adapt `snippet-checker` to handle your snippet
+3. adapt your snippet to something `snippet-checker` can handle
+4. tag your snippet so `snippet-checker` ignores it
 
 Some examples.
 
@@ -495,66 +553,61 @@ again better to tag it so `snippet-checker` ignores it.
 
 ### Which languages can it check?
 
-Python robustly.
-Go somewhat.
-JavaScript (Node), Ruby and Rust a bit.
-It's a matter of handling more normalisations and dealing with pathological cases.
+Any, because [Bring your own images](#bring-your-own-images).
+
+However, the tool does output normalisation itself,
+so may normalise a lot (Python),
+or a little (Go, Ruby, Rust, Node),
+or not at all (everything else).
+
+If you want more/different normalisations, open a PR :)
+
 
 ### Can I check snippets which use third-party packages?
 
-Yes.
-Just ensure an image is available (either locally or on Docker Hub) with that package set up.
+Yes, because [Bring your own images](#bring-your-own-images).
+Just write a runner image meeting the contract.
 
-For example, suppose you want to test `numpy` snippets, such as
-
-```python
-import numpy as np
-
-a = np.array([[1, 1], [0, 1]])
-b = np.array([[2, 0], [3, 4]])
-
-print(a * b)
-```
-
-First, you could write a Dockerfile something like
+For example, to test `numpy` snippets create an image like
 
 ```Dockerfile
-FROM python:latest
-ARG numpy_version
+FROM python:3.13
+WORKDIR /tmp
+ENV NO_COLOR=true PYTHONWARNINGS=ignore
+COPY prepare.sh run.sh ./
 RUN <<EOF
 python -m venv numpy_env
-source numpy_env/bin/activate
-python -m pip install numpy==${numpy_version}
+. numpy_env/bin/activate
+python -m pip install --no-cache-dir numpy==2.5
 EOF
 ```
 
-Then run
+where `prepare.sh` is
 
-```text
-docker image build -t numpy:2.4.0 -f Dockerfile --build-arg numpy_version=2.4.0 .
+```sh
+#!/bin/sh
+mv main main.py
 ```
 
-Finally, for anki, set the target snippets' tags to `snip:image:numpy:2.4.0`,
-or, for files, set
+and `run.sh` is
 
-```toml
-[images]
-py = "numpy:2.4.0"
+```sh
+#!/bin/sh
+. numpy_env/bin/activate
+python main.py
 ```
-
-in the `snippet-checker.toml`.
-
-Now you can check them like normal.
 
 ### How sandboxed?
 
 The snippets run in Docker containers.
 No mounts or volumes.
 
+Don't point the tool at arbitrary code.
+The sandboxing protects against accidents, not attacks.
+
 ### What formatters does it use?
 
-Bring your own.
-See [Formatter images](#formatter-images).
+Any you like, because [Bring your own images](#bring-your-own-images).
 
 ### What's no_compress?
 
