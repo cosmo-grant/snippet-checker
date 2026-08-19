@@ -1,3 +1,3 @@
 #!/bin/sh
-set -eu
-prettier --parser babel /tmp/input >/tmp/output
+set -e
+exec prettier --parser babel ./input >./output

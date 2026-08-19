@@ -1,6 +1,6 @@
 #!/bin/sh
-set -eu
-cp /tmp/input /tmp/rubocop_work.rb
+set -e
+cp ./input ./rubocop_work.rb
 # rubocop exit_codes:
 #   0 = no/low-severity/autocorrected offenses
 #   1 = some high-severity non-autocorrected offenses
@@ -9,6 +9,6 @@ cp /tmp/input /tmp/rubocop_work.rb
 # Our contract is: exit non-zero just if rubocop error.
 # So exit 2 if 2 else ignore.
 exit_code=0
-rubocop --autocorrect /tmp/rubocop_work.rb || exit_code=$?
+rubocop --autocorrect ./rubocop_work.rb || exit_code=$?
 if [ $exit_code = 2 ]; then exit 2; fi
-mv /tmp/rubocop_work.rb /tmp/output
+mv ./rubocop_work.rb ./output

@@ -262,7 +262,7 @@ Contract:
 
 - The image must have a `format.sh` script
 - which can be executed via `./format.sh`
-- and which reads `/tmp/input` and writes the formatted version to `/tmp/output`
+- and which reads `./input` and writes the formatted version to `./output`
 - and which exits 0 just if there was no error when formatting (whether or not changes were made).
 
 For example, to format Python snippets you could create
@@ -277,15 +277,16 @@ where `format.sh` is
 
 ```sh
 #!/bin/sh
-set -eu
-ruff format /tmp/input
-mv /tmp/input /tmp/output
+set -e
+ruff format ./input
+mv ./input ./output
 ```
 
 and the `Dockerfile` is
 
 ```Dockerfile
 FROM ghcr.io/astral-sh/ruff:0.16-alpine
+WORKDIR /tmp
 ENTRYPOINT [ "" ]
 COPY format.sh .
 ```
