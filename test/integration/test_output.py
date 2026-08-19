@@ -131,3 +131,10 @@ class TestRustOutput:
         code = 'fn main() { println!("hello"); }\n'
         snippet = Snippet(code, "test-rust:1.84", "test-rustfmt:1.1")
         assert snippet.output(timeout=None) == "hello\n"
+
+
+class TestCOutput:
+    def test_hello(self):
+        code = '#include <stdio.h>\n\nint main(int argc, char *argv[]) {\nprintf("hello\\n");\n}\n'
+        snippet = Snippet(code, "test-gcc:16.2", "test-tbd")
+        assert snippet.output(timeout=None) == "hello\n"
