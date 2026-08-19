@@ -196,8 +196,15 @@ class Snippet:
         dest = Path("/tmp/main")
         with self.executor.get_container(self.runner_image) as container:
             self.executor.write(container, self.code, dest)
-            self.executor.exec_run(container, ["./prepare.sh"])
-            return self.executor.exec_run_timed(container, ["./run.sh"], timeout)
+            exit_code, bytes_ = self.executor.exec_run(container, ["./prepare.sh"])
+            if exit_code != 0:
+                # This might be expected, e.g. a snippet to illustrate some point about compilation.
+                # Or not, e.g. a bug in the prepare.sh script.
+                # In any case, treat the prepare step's output as the snippet's output, so the output
+                # is either as it should be or helps the user debug.
+                return bytes_.decode("utf-8")
+            else:
+                return self.executor.exec_run_timed(container, ["./run.sh"], timeout)
 
     def format(self, compress: bool) -> str | None:
         with self.executor.get_container(self.formatter_image) as container:

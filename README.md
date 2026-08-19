@@ -198,11 +198,11 @@ and can control runtime and formatting configuration.
 
 Contract:
 
-- the image must have `prepare.sh`, `run.sh` scripts
-- which can be executed via `./prepare.sh`, `./run.sh`
-- the tool copies the snippet into the image's working directory as `main`
-- `prepare.sh` does any setup, e.g. compilation, install dependencies
-- `run.sh` executes the snippet
+- The image must have `prepare.sh`, `run.sh` scripts which can be executed via `./prepare.sh`, `./run.sh`.
+- The tool copies the snippet into the image's working directory as `main`.
+- `prepare.sh` does any setup, e.g. compilation, install dependencies.
+- If it exits non-zero, its output is treated as the snippet's output.
+- Else, `run.sh` executes the snippet, and its output is treated as the snippet's output.
 
 For example, to run Go snippets you could create
 
@@ -217,15 +217,16 @@ where `prepare.sh` is
 
 ```sh
 #!/bin/sh
+set -e
 mv main main.go
-go build main.go
+exec go build main.go
 ```
 
 and `run.sh` is
 
 ```sh
 #!/bin/sh
-./main
+exec ./main
 ```
 
 and the `Dockerfile` is
@@ -241,9 +242,8 @@ COPY prepare.sh run.sh ./
 Then
 
 ```sh
-chmod +x prepare.sh
-chmod +x run.sh
-docker image build -t my-go-runner:1.21 .
+chmod +x prepare.sh run.sh
+docker image build -t my-go-runner .
 ```
 
 For anki, tag the target notes `snip:runner_image:my-go-runner`,
@@ -260,10 +260,10 @@ to the `snippet_checker.toml`.
 
 Contract:
 
-- the image must have a `format.sh` script
+- The image must have a `format.sh` script
 - which can be executed via `./format.sh`
 - and which reads `/tmp/input` and writes the formatted version to `/tmp/output`
-- and which exits 0 just if there was no error when formatting (whether or not changes were made)
+- and which exits 0 just if there was no error when formatting (whether or not changes were made).
 
 For example, to format Python snippets you could create
 

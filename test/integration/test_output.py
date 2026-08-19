@@ -81,6 +81,11 @@ class TestGoOutput:
         snippet = Snippet(code, "test-golang:1.25", formatter_image="test-gofmt:1.1")
         assert snippet.output(timeout=None) == "hello\n"
 
+    def test_compilation_fails(self):
+        code = "oops"
+        snippet = Snippet(code, "test-golang:1.25", formatter_image="test-gofmt:1.1")
+        assert snippet.output(timeout=None) == "main.go:1:1: expected 'package', found oops\n"
+
 
 class TestNodeOutput:
     def test_hello(self):
