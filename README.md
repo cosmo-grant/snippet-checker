@@ -165,7 +165,7 @@ To override a setting for a particular snippet, add another `snippet_checker.tom
 check_format = false
 
 [runner_images]
-go = "my-go-runner:1.21"
+go = "my-alternative-go-runner:1.21"
 ```
 
 ### Run
@@ -189,24 +189,24 @@ Pass `--fix` to auto-fix (version control your collection first).
 
 ## Bring your own images
 
-You need to create your own runner and formatter images.
+You must create your own runner and formatter images.
 A hassle, yes.
-But it means you can check snippets in any language, against any runtime version, with any dependencies,
+But it means you can check snippets in any language, at any version, with any dependencies,
 and can control runtime and formatting configuration.
 
 ### Runner images
 
 Contract:
 
-- the image must have `prepare.sh`, `run.sh` scripts in the working directory
-- which can be executed via `./prepare.sh`, `run.sh`
+- the image must have `prepare.sh`, `run.sh` scripts
+- which can be executed via `./prepare.sh`, `./run.sh`
 - the tool copies the snippet into the image's working directory as `main`
 - `prepare.sh` does any setup, e.g. compilation, install dependencies
 - `run.sh` executes the snippet
 
 For example, to run Go snippets you could create
 
-```
+```text
 my-go-runner
 ├── Dockerfile
 └── prepare.sh
@@ -246,12 +246,12 @@ chmod +x run.sh
 docker image build -t my-go-runner:1.21 .
 ```
 
-For anki, tag the target notes `snip:runner_image:my-go-runner:1.21`,
+For anki, tag the target notes `snip:runner_image:my-go-runner`,
 or, for files, add
 
 ```toml
 [formatter_images]
-py = "my-go-runner:1.21"
+py = "my-go-runner"
 ```
 
 to the `snippet_checker.toml`.
@@ -260,14 +260,14 @@ to the `snippet_checker.toml`.
 
 Contract:
 
-- the image must have a `format.sh` script in the working directory
+- the image must have a `format.sh` script
 - which can be executed via `./format.sh`
 - and which reads `/tmp/input` and writes the formatted version to `/tmp/output`
 - and which exits 0 just if there was no error when formatting (whether or not changes were made)
 
 For example, to format Python snippets you could create
 
-```
+```text
 my-python-formatter
 ├── Dockerfile
 └── format.sh
@@ -296,15 +296,15 @@ Then
 
 ```sh
 chmod +x format.sh
-docker image build -t my-python-formatter:1.2 .
+docker image build -t my-python-formatter .
 ```
 
-For anki, tag the target notes `snip:formatter_image:my-python-formatter:1.2`,
+For anki, tag the target notes `snip:formatter_image:my-python-formatter`,
 or, for files, add
 
 ```toml
 [formatter_images]
-py = "my-python-formatter:1.2"
+py = "my-python-formatter"
 ```
 
 to the `snippet_checker.toml`.
@@ -561,7 +561,6 @@ or a little (Go, Ruby, Rust, Node),
 or not at all (everything else).
 
 If you want more/different normalisations, open a PR :)
-
 
 ### Can I check snippets which use third-party packages?
 
