@@ -1,3 +1,4 @@
 #!/bin/sh
+set -e
 . numpy_env/bin/activate
-python main.py
+exec python main.py

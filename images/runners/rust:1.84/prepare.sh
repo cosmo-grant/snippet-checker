@@ -1,3 +1,4 @@
 #!/bin/sh
+set -e
 mv main main.rs
-rustc main.rs
+exec rustc main.rs

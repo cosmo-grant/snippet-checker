@@ -1,3 +1,4 @@
 #!/bin/sh
+set -e
 mv main main.go
-go build main.go
+exec go build main.go
