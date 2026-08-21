@@ -13,6 +13,14 @@ logger = logging.getLogger(__name__)
 Mode = Literal["check", "interactive", "fix"]
 
 
+class NoRunnerImageError(Exception):
+    pass
+
+
+class NoFormatterImageError(Exception):
+    pass
+
+
 class UserInput(Enum):
     REPLACE = "REPLACE"
     IGNORE = "IGNORE"
@@ -39,6 +47,12 @@ def check_output(repository: Repository, mode: Mode) -> int:
     ignored: list[Question] = []
     questions = repository.get()
     questions_to_check = [question for question in questions if question.check_output]
+
+    questions_with_no_runner_image = [question for question in questions_to_check if not question.snippet.runner_image]
+    if questions_with_no_runner_image:
+        raise NoRunnerImageError(
+            f"Some questions have no runner image: {','.join(str(question.id) for question in questions_with_no_runner_image)}"
+        )
 
     print(f"Found {len(questions)} snippets.")
     print(f"Will check {len(questions_to_check)}.")
@@ -100,6 +114,12 @@ def check_formatting(repository: Repository, mode: Mode) -> int:
     ignored: list[Question] = []
     questions = repository.get()
     questions_to_check = [question for question in questions if question.check_format]
+
+    questions_with_no_formatter_image = [question for question in questions_to_check if not question.snippet.formatter_image]
+    if questions_with_no_formatter_image:
+        raise NoFormatterImageError(
+            f"Some questions have no formatter image: {','.join(str(question.id) for question in questions_with_no_formatter_image)}"
+        )
 
     print(f"Found {len(questions)} snippets.")
     print(f"Will check {len(questions_to_check)}.")

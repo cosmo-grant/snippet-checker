@@ -193,6 +193,7 @@ class Snippet:
         self.executor = DockerExecutor()
 
     def output(self, timeout: float | None) -> str:
+        assert self.runner_image, "No runner image set"
         dest = Path("/tmp/main")
         with self.executor.get_container(self.runner_image) as container:
             self.executor.write(container, self.code, dest)
@@ -207,6 +208,7 @@ class Snippet:
                 return self.executor.exec_run_timed(container, ["./run.sh"], timeout)
 
     def format(self, compress: bool) -> str | None:
+        assert self.formatter_image, "No formatter image set"
         with self.executor.get_container(self.formatter_image) as container:
             self.executor.write(container, self.code, Path("/tmp/input"))
             exit_code, _ = self.executor.exec_run(container, ["./format.sh"])

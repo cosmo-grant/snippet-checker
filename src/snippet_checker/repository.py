@@ -119,8 +119,8 @@ class DirectoryRepository(Repository):
                 Question(
                     id=snippet_path,
                     code=code,
-                    runner_image=config.runner_images[snippet_path.suffix.removeprefix(".")],
-                    formatter_image=config.formatter_images[snippet_path.suffix.removeprefix(".")],
+                    runner_image=config.runner_images.get(snippet_path.suffix.removeprefix("."), ""),
+                    formatter_image=config.formatter_images.get(snippet_path.suffix.removeprefix("."), ""),
                     given_output=output,
                     check_output=config.check_output,
                     check_format=config.check_format,

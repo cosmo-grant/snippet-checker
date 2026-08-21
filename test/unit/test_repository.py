@@ -195,6 +195,27 @@ def test_note_to_question():
     assert q.output_verbosity == 0
 
 
+def test_note_to_question_no_image_tags():
+    note = FakeNote(
+        fields=["", ""],
+        _note_type_name="code_output",
+        _keys=["code", "output"],
+    )
+    anki_config = AnkiConfig(
+        profile="jo",
+        note_type_configs=[
+            NoteTypeConfig(
+                name="code_output",
+                code_field=FieldConfig(name="code", pattern=re.compile(r"(?P<target>.*)")),
+                output_field=FieldConfig(name="output", pattern=re.compile(r"(?P<target>.*)")),
+            ),
+        ],
+    )
+    q = note_to_question(anki_config, note)
+    assert q.snippet.runner_image == ""
+    assert q.snippet.formatter_image == ""
+
+
 def test_note_to_question_respects_config_tags():
     note = FakeNote(
         fields=["", ""],
@@ -276,6 +297,18 @@ def test_directory_repository_per_question_config_overrides_root(tmp_path):
 
     assert len(questions) == 1
     assert questions[0].check_output is False
+
+
+def test_directory_repository_no_image_tags(tmp_path):
+    q1 = tmp_path / "q1"
+    q1.mkdir()
+    (q1 / "main.py").write_text("print(1)")
+
+    repo = DirectoryRepository(DirectoryConfig(), tmp_path)
+    questions = repo.get()
+
+    assert questions[0].snippet.runner_image == ""
+    assert questions[0].snippet.formatter_image == ""
 
 
 def test_directory_repository_multiple_snippets_raises(tmp_path):
