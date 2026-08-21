@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.13"
 
 [options]
-exclude-newer = "2026-05-21T23:21:10.003006914Z"
+exclude-newer = "2026-08-13T08:35:51.900349355Z"
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
@@ -618,7 +618,7 @@ wheels = [
 
 [[package]]
 name = "snippet-checker"
-version = "0.1.2"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "anki" },
