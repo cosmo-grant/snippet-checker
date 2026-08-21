@@ -187,8 +187,8 @@ def test_note_to_question():
     assert q.id == 1
     assert q.snippet.code == "print(1 + 1)"
     assert q.given_output == "2\n"
-    assert q.runner_image == "python:3.13"
-    assert q.formatter_image == "ruff:1.1"
+    assert q.snippet.runner_image == "python:3.13"
+    assert q.snippet.formatter_image == "ruff:1.1"
     assert q.check_output is True
     assert q.check_format is True
     assert q.compress is True
@@ -252,13 +252,13 @@ def test_directory_repository_get(tmp_path):
 
     assert py_q.snippet.code == "print(1)"
     assert py_q.given_output == "1\n"
-    assert py_q.runner_image == "python:3.13"
-    assert py_q.formatter_image == "ruff:1.1"
+    assert py_q.snippet.runner_image == "python:3.13"
+    assert py_q.snippet.formatter_image == "ruff:1.1"
 
     assert go_q.snippet.code == "package main"
     assert go_q.given_output == ""
-    assert go_q.runner_image == "golang:1.25"
-    assert go_q.formatter_image == "gofmt:2.2"
+    assert go_q.snippet.runner_image == "golang:1.25"
+    assert go_q.snippet.formatter_image == "gofmt:2.2"
     assert (q2 / "output.txt").exists()
 
 

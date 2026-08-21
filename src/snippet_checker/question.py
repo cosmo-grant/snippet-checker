@@ -30,8 +30,6 @@ class Question:
         review: bool = False,
     ):
         self.id = id
-        self.runner_image = runner_image
-        self.formatter_image = formatter_image
         self.given_output = given_output
         self.output_verbosity = output_verbosity
         self.compress = compress
