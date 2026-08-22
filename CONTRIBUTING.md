@@ -43,6 +43,8 @@ Release a version:
 
 ```
 # update version in pyproject.toml
+uv sync
+# commit changes
 uv build --clear
 git tag vX.Y.Z
 git push --tags
