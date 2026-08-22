@@ -619,6 +619,16 @@ The sandboxing protects against accidents, not attacks.
 
 Any you like, because [Bring your own images](#bring-your-own-images).
 
+### What's up with anki unicode normalization?
+
+Anki normalizes strings to NFC before writing them to the database, by default.
+So if your snippet is `print("a\N{COMBINING TILDE}")`,
+the tool will keep saying that the output in the anki note is wrong.
+You can either:
+- stop anki NFCing your strings by running `mw.col.conf["normalize_note_text"] = False` in the debug console
+- rewrite your note to avoid the issue
+- tag it `snip:no_check_output`
+
 ### What's no_compress?
 
 Some formatters like double blank lines, e.g. between class definitions.
