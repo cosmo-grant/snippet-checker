@@ -603,7 +603,7 @@ and `run.sh` is
 ```sh
 #!/bin/sh
 . numpy_env/bin/activate
-python main.py
+exec python main.py
 ```
 
 ### How sandboxed?
