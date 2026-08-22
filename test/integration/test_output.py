@@ -55,17 +55,12 @@ class TestPythonOutput:
         snippet = Snippet(code, "test-python:3.13", "")
         assert snippet.output(timeout=None) == "bar"
 
-    # TODO: investigate
-    @pytest.mark.xfail
+    # See #38.
+    # This test proves the compression is not between Python and Docker (of course, but still nice to verify).
     def test_unicode_normalization(self):
-        code = (
-            "from unicodedata import normalize\n"
-            's1 = "ca\N{LATIN SMALL LETTER N WITH TILDE}a\n'
-            's2 = "can\N{COMBINING TILDE}a\n'
-            "print(s1, s2)\n"
-        )
+        code = 'print("\N{LATIN SMALL LETTER N WITH TILDE}", "n\N{COMBINING TILDE}")'
         snippet = Snippet(code, "test-python:3.13", "")
-        assert snippet.output(timeout=None) == "caña caña"
+        assert snippet.output(timeout=None) == "\N{LATIN SMALL LETTER N WITH TILDE} n\N{COMBINING TILDE}\n"
 
 
 class TestNumpyOutput:
