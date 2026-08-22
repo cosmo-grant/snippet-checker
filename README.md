@@ -81,9 +81,9 @@ In anki:
 - add a tag to the notes you want to check
   - e.g. `check_me`
 - to check the outputs, add a tag `snip:runner_image:<image tag>` to the notes
-  - e.g. `snip:runner_image:my-python-runner:3.13`
+  - e.g. `snip:runner_image:my-python-runner`
 - to check formatting, add a tag `snip:formatter_image:<image tag>` to the notes
-  - e.g. `snip:formatter_image:my-python-formatter:1.2.3`
+  - e.g. `snip:formatter_image:my-python-formatter`
 - the images must satisfy a contract - see [Bring your own images](#bring-your-own-images)
 - add other tags to customize how the tool treats them
   - `snip:no_check_format` to skip when checking formatting
@@ -148,15 +148,15 @@ output_verbosity = 0  # Or 1 or 2.
 
 # Set runner image tags (the snippets are executed using these)
 [runner_images]
-js = "my-javascript-runner:24.13"
-py = "my-python-runner:3.14"
-go = "my-go-runner:1.23"
+js = "my-javascript-runner"
+py = "my-python-runner"
+go = "my-go-runner"
 
 # Set formatter image tags (the snippets are formatted using these)
 [formatter_images]
-js = "my-javascript-formatter:1.2"
-py = "my-python-formatter:1.2"
-go = "my-go-formatter:1.2"
+js = "my-javascript-formatter"
+py = "my-python-formatter"
+go = "my-go-formatter"
 ```
 
 To override a setting for a particular snippet, add another `snippet_checker.toml` alongside it:
@@ -165,7 +165,7 @@ To override a setting for a particular snippet, add another `snippet_checker.tom
 check_format = false
 
 [runner_images]
-go = "my-alternative-go-runner:1.21"
+go = "my-alternative-go-runner"  # e.g. a different Go version
 ```
 
 ### Run
