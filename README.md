@@ -470,15 +470,16 @@ We saw examples above:
 memory addresses vary across runs;
 errnos vary across platforms.
 
-There are plenty more:
+There are plenty more (examples are Python-centric but similar is true of all languages):
 
 - `print(os.environ["PWD"])`
 - `print(random.random())`
 - `socket.bind(('127.0.0.1', 65432))` errors if address is already in use
 - `open('foo')` errors if no such file
+- `print("foo\rbar")` shows as `bar` if printing to a terminal but not if printing to a file
 - timing depends on machine, contention, ...
-- whether you run via `python -c 'some code'` or `python some_file.py`
-- which Python cli options you set (`-u`, `-v`, `-Wignore`, ...)
+- how you invoke the runtime (e.g. `python -c 'contents of main.py'` versus `python main.py`)
+- which compile or runtime options you set (e.g. `python -u`, `python -Wignore`)
 - and so on
 
 Some variation you can pin down via your runner image.
