@@ -50,7 +50,7 @@ In `~/.snippet-checker/` or `$XDG_CONFIG_HOME/snippet-checker/` write `snippet-c
 ```toml
 profile = "cosmo"  # Name of your anki profile, used to locate your collection.
 # You can set `collection_path = "/path/to/collection"` instead of setting the profile if you like.
-timeout = 10.0  # Seconds. The tool assumes any snippet that runs for longer than this is hanging.
+timeout = 10.0  # Seconds. The tool assumes any snippet that runs for longer than this is hanging. Default is no timeout.
 
 # The [[notes]] blocks describe how to extract the code and output from your notes.
 [[notes]]
@@ -88,7 +88,7 @@ In anki:
 - add other tags to customize how the tool treats them
   - `snip:no_check_format` to skip when checking formatting
   - `snip:no_check_output` to skip when checking outputs
-  - `snip:output_verbosity:0` or `1` or `2`
+  - `snip:output_verbosity:0` or `1` or `2` (default is 0)
   - `snip:no_compress` to keep double blank lines in code
   - more details on these below
 
@@ -144,20 +144,29 @@ At `your_dir`'s root write `snippet_checker.toml`, e.g.
 
 ```toml
 # Set how tracebacks, panics etc. are abbreviated.
-output_verbosity = 0  # Or 1 or 2.
+output_verbosity = 0  # Or 1 or 2. Default is 1.
 
-# Set runner image tags (the snippets are executed using these)
+# Set runner image tags if checking outputs (the snippets are executed using these)
+# <file extension> = <tag>
 [runner_images]
 js = "my-javascript-runner"
 py = "my-python-runner"
 go = "my-go-runner"
 
-# Set formatter image tags (the snippets are formatted using these)
+# Set formatter image tags if checking formatting (the snippets are formatted using these)
+# <file extension> = <tag>
 [formatter_images]
 js = "my-javascript-formatter"
 py = "my-python-formatter"
 go = "my-go-formatter"
 ```
+
+Add other keys to customize how the tool treats snippets:
+- `timeout = 10.0` to assume any snippet that runs for longer than 10s is hanging (default is no timeout)
+- `check_output = false` to skip when checking outputs
+- `check_format = false` to skip when checking formatting
+- `output_verbosity = 0` or `1` or `2` (default is 1)
+- `compress = true` to replace double blank lines by single
 
 To override a setting for a particular snippet, add another `snippet_checker.toml` alongside it:
 
