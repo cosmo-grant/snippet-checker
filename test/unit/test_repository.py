@@ -290,7 +290,7 @@ def test_directory_repository_per_question_config_overrides_root(tmp_path):
     (q1 / "snippet_checker.toml").write_text("check_output = false\n")
 
     repo = DirectoryRepository(
-        DirectoryConfig(runner_images={"py": "python:3.13"}, formatter_images={"py": "ruff:1.1"}, check_output=True),
+        DirectoryConfig(check_output=True),
         tmp_path,
     )
     questions = repo.get()
@@ -324,8 +324,8 @@ def test_directory_repository_add_tag_creates_config(tmp_path):
     question = Question(
         id=tmp_path / "main.py",
         code="",
-        runner_image="python:3.13",
-        formatter_image="test-ruff:1.1",
+        runner_image="",
+        formatter_image="",
         given_output="",
         check_output=True,
         check_format=True,
@@ -348,8 +348,8 @@ def test_directory_repository_add_tag_idempotent(tmp_path):
     question = Question(
         id=tmp_path / "main.py",
         code="",
-        runner_image="python:3.13",
-        formatter_image="test-ruff:1.1",
+        runner_image="",
+        formatter_image="",
         given_output="",
         check_output=True,
         check_format=True,
@@ -371,8 +371,8 @@ def test_directory_repository_add_tag_merges_existing(tmp_path):
     question = Question(
         id=tmp_path / "main.py",
         code="",
-        runner_image="python:3.13",
-        formatter_image="test-ruff:1.1",
+        runner_image="",
+        formatter_image="",
         given_output="",
         check_output=True,
         check_format=True,
@@ -381,7 +381,7 @@ def test_directory_repository_add_tag_merges_existing(tmp_path):
         timeout=None,
     )
     repo = DirectoryRepository(
-        DirectoryConfig(runner_images={"py": "python:3.13"}),
+        DirectoryConfig(),
         tmp_path,
     )
     repo.add_tag(question, Tag.REVIEW)
