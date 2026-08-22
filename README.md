@@ -30,6 +30,7 @@ Check code snippets in anki or files via docker.
     - [Can I check snippets which use third-party packages?](#can-i-check-snippets-which-use-third-party-packages)
     - [How sandboxed?](#how-sandboxed)
     - [What formatters does it use?](#what-formatters-does-it-use)
+    - [What's up with anki unicode normalization?](#whats-up-with-anki-unicode-normalization)
     - [What's no_compress?](#whats-nocompress)
 <!--toc:end-->
 
