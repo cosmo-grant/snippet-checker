@@ -112,9 +112,9 @@ def test_target_roundtrip(original):
 
 
 def test_anki_config_defaults():
-    config = AnkiNoteConfig(["runner_image:python:3.13", "formatter_image:test-ruff:1.1"])
+    config = AnkiNoteConfig(["runner_image:python:3.13", "formatter_image:snip-ruff:0.16"])
     assert config.runner_image == "python:3.13"
-    assert config.formatter_image == "test-ruff:1.1"
+    assert config.formatter_image == "snip-ruff:0.16"
     assert config.check_output is True
     assert config.check_format is True
     assert config.output_verbosity == 0
@@ -125,7 +125,7 @@ def test_anki_config_flags_override_defaults():
     config = AnkiNoteConfig(
         [
             "runner_image:golang:1.25",
-            "formatter_image:test-gofmt:2.2",
+            "formatter_image:snip-gofmt:1.22",
             "no_check_output",
             "no_check_format",
             "output_verbosity:2",
@@ -133,7 +133,7 @@ def test_anki_config_flags_override_defaults():
         ]
     )
     assert config.runner_image == "golang:1.25"
-    assert config.formatter_image == "test-gofmt:2.2"
+    assert config.formatter_image == "snip-gofmt:1.22"
     assert config.check_output is False
     assert config.check_format is False
     assert config.output_verbosity == 2

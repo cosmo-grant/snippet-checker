@@ -1,5 +1,5 @@
 [runner_images]
-go = "test-golang:1.22"
+go = "snip-golang:1.22"
 
 [formatter_images]
-go = "test-gofmt:1.22"
+go = "snip-gofmt:1.22"

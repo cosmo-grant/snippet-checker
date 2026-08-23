@@ -10,7 +10,7 @@ def test_check_output_ok_when_no_formatter_image():
             Question(
                 id=0,
                 code="",
-                runner_image="test-python:3.13",
+                runner_image="snip-python:3.13",
                 formatter_image="",
                 given_output="",
                 check_output=True,
@@ -32,7 +32,7 @@ def test_check_formatting_ok_when_no_runner_image():
                 id=0,
                 code="",
                 runner_image="",
-                formatter_image="test-ruff",
+                formatter_image="snip-ruff:0.16",
                 given_output="",
                 check_output=True,
                 check_format=True,

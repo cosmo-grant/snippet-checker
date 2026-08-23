@@ -1,15 +1,15 @@
 output_verbosity = 0
 
 [runner_images]
-js = "test-node:24.13"
-rb = "test-ruby:3.4"
-py = "test-python:3.13"
-go = "test-golang:1.25"
-rs = "test-rust:1.84"
+js = "snip-node:24.13"
+rb = "snip-ruby:3.4"
+py = "snip-python:3.13"
+go = "snip-golang:1.25"
+rs = "snip-rust:1.84"
 
 [formatter_images]
-js = "test-prettier"
-rb = "test-rubocop"
-py = "test-ruff"
-go = "test-gofmt"
-rs = "test-rustfmt"
+js = "snip-prettier"
+rb = "snip-rubocop"
+py = "snip-ruff"
+go = "snip-gofmt"
+rs = "snip-rustfmt"
