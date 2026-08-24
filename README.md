@@ -260,7 +260,7 @@ For anki, tag the target notes `snip:runner_image:my-go-runner`,
 or, for files, add
 
 ```toml
-[formatter_images]
+[runner_images]
 py = "my-go-runner"
 ```
 
