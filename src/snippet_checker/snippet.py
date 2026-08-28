@@ -148,14 +148,9 @@ class DockerExecutor:
             # See #30.
             container.restart()
 
-        # TODO: the close() calls are required on linux but cause errors on mac.
-        # I'd like to understand this better.
-        if platform.system() == "Linux":
-            output_stream.close()
-            # CancellableStream.close() doesn't close the underlying response,
-            # causing "ValueError: I/O operation on closed file" at shutdown.
-            # See https://github.com/docker/docker-py/issues/3345
-            output_stream._response.close()
+        # Occasionally I saw "ValueError: I/O operation on closed file" at shutdown.
+        # See #39 and https://github.com/docker/docker-py/issues/3345.
+        output_stream._response.close()
 
         return to_string(logs, hanged)
 
