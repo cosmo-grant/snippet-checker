@@ -26,7 +26,19 @@ Run the unit tests:
 pytest test/unit
 ```
 
-Run all tests (slow, and requires docker, an internet connection, docker hub, ...):
+Build runner images:
+
+```
+just runner-images
+```
+
+Build formatter images:
+
+```
+just formatter-images
+```
+
+Run all tests (slow, and requires images, docker, an internet connection, docker hub, ...):
 
 ```
 pytest
