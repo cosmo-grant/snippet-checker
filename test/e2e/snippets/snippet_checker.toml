@@ -8,8 +8,8 @@ go = "snip-golang:1.25"
 rs = "snip-rust:1.84"
 
 [formatter_images]
-js = "snip-prettier"
-rb = "snip-rubocop"
-py = "snip-ruff"
-go = "snip-gofmt"
-rs = "snip-rustfmt"
+js = "snip-prettier:3.9"
+rb = "snip-rubocop:1.89"
+py = "snip-ruff:0.16"
+go = "snip-gofmt:1.22"
+rs = "snip-rustfmt:1.97"
