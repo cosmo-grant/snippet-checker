@@ -63,3 +63,16 @@ class TestRustFormat:
         snippet = Snippet(code, "", "snip-rustfmt:1.97")
         expected = 'fn main() {\n    println!("hello");\n}\n'
         assert snippet.format(compress=False) == expected
+
+
+class TestClojureFormat:
+    def test_no_change(self):
+        code = "(defn foo [x]\n  (+ x 1))\n"
+        snippet = Snippet(code, "", "snip-cljfmt:0.16")
+        assert snippet.format(compress=False) == code
+
+    def test_fixes_indentation(self):
+        code = "(defn foo [x]\n(+ x 1))\n"
+        snippet = Snippet(code, "", "snip-cljfmt:0.16")
+        expected = "(defn foo [x]\n  (+ x 1))\n"
+        assert snippet.format(compress=False) == expected
