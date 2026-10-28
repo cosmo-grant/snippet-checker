@@ -31,23 +31,27 @@ parser.add_argument("target", help="Directory or anki tag of the questions to ch
 def app() -> int:
     args = parser.parse_args()
 
-    logging.basicConfig(format="%(message)s")
-    logger = logging.getLogger("snippet_checker")
-    level = logging.DEBUG if args.verbose else logging.INFO
-    logger.setLevel(level)
+    try:
+        logging.basicConfig(format="%(message)s")
+        logger = logging.getLogger("snippet_checker")
+        level = logging.DEBUG if args.verbose else logging.INFO
+        logger.setLevel(level)
 
-    repository: Repository
-    config: DirectoryConfig | AnkiConfig
-    if args.anki:
-        config = get_anki_config()
-        repository = AnkiRepository(config, args.target)
-    else:
-        dir = Path(args.target)
-        config = get_directory_config(dir)
-        repository = DirectoryRepository(config, dir)
+        repository: Repository
+        config: DirectoryConfig | AnkiConfig
+        if args.anki:
+            config = get_anki_config()
+            repository = AnkiRepository(config, args.target)
+        else:
+            dir = Path(args.target)
+            config = get_directory_config(dir)
+            repository = DirectoryRepository(config, dir)
 
-    func = check_output if args.command == "output" else check_formatting
-    return func(repository, args.mode)
+        func = check_output if args.command == "output" else check_formatting
+        return func(repository, args.mode)
+    except Exception:
+        logger.exception("internal error")
+        return 2
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ Check code snippets in anki or files via docker.
     - [Structure your directory](#structure-your-directory)
     - [Write config](#write-config-1)
     - [Run](#run-1)
+  - [Exit codes](#exit-codes)
   - [Bring your own images](#bring-your-own-images)
     - [Runner images](#runner-images)
     - [Formatter images](#formatter-images)
@@ -197,6 +198,12 @@ snippet-checker format your_dir
 
 Pass `--interactive` to fix interactively.
 Pass `--fix` to auto-fix (version control your collection first).
+
+## Exit codes
+
+0 if all snippets pass the check.
+1 if some snippets fail the check.
+2 if internal error.
 
 ## Bring your own images
 
