@@ -133,3 +133,28 @@ class TestCOutput:
         code = '#include <stdio.h>\n\nint main(int argc, char *argv[]) {\nprintf("hello\\n");\n}\n'
         snippet = Snippet(code, "snip-gcc:16.2", "")
         assert snippet.output(timeout=None) == "hello\n"
+
+    def test_address_sanitizer(self):
+        code = "#include <stdlib.h>\n\nint main(void) {\nchar *p = malloc(16);\nfree(p);\nfree(p);\n}\n"
+        snippet = Snippet(code, "snip-gcc:16.2", "")
+        assert "AddressSanitizer: attempting double-free" in snippet.output(timeout=None)
+
+    def test_undefined_behaviour_sanitizer(self):
+        code = "#include <limits.h>\n\nint main(void) {\nint x = INT_MAX;\nx++;\n}\n"
+        snippet = Snippet(code, "snip-gcc:16.2", "")
+        assert "runtime error: signed integer overflow" in snippet.output(timeout=None)
+
+    def test_uninitialized_is_an_error(self):
+        code = '#include <stdio.h>\n\nint main(void) {\nint x;\nprintf("%d\\n", x);\n}\n'
+        snippet = Snippet(code, "snip-gcc:16.2", "")
+        assert "[-Werror=uninitialized]" in snippet.output(timeout=None)
+
+    def test_sequence_point_is_an_error(self):
+        code = "int main(void) {\nint a[3] = {0};\nint i = 1;\na[i] = i++;\n}\n"
+        snippet = Snippet(code, "snip-gcc:16.2", "")
+        assert "[-Werror=sequence-point]" in snippet.output(timeout=None)
+
+    def test_leaks_are_not_reported(self):
+        code = '#include <stdio.h>\n#include <stdlib.h>\n\nint main(void) {\nmalloc(16);\nprintf("hello\\n");\n}\n'
+        snippet = Snippet(code, "snip-gcc:16.2", "")
+        assert snippet.output(timeout=None) == "hello\n"

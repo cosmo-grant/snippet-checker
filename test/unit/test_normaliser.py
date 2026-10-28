@@ -151,3 +151,58 @@ def test_normalise_node_traceback(output_verbosity, expected):
     )
 
     assert actual == expected
+
+
+@mark.parametrize(
+    "output, expected",
+    [
+        (
+            "=================================================================\n"
+            "==18==ERROR: AddressSanitizer: attempting double-free on 0x712a1a9e0010 in thread T0:\n"
+            "    #0 0x750a1c4a040f  (/usr/local/lib64/libasan.so.8+0x12340f)\n"
+            "    #1 0x000000401183 in main (/tmp/main+0x401183)\n"
+            "\n"
+            "SUMMARY: AddressSanitizer: double-free (/tmp/main+0x401183) in main\n"
+            "==18==ABORTING\n",
+            "undefined behaviour: double-free\n",
+        ),
+        (
+            "AddressSanitizer:DEADLYSIGNAL\n"
+            "=================================================================\n"
+            "==35==ERROR: AddressSanitizer: SEGV on unknown address 0x000000402060 (pc 0x000000401204 T0)\n"
+            "==35==The signal is caused by a WRITE memory access.\n"
+            "    #0 0x000000401204 in main (/tmp/main+0x401204)\n"
+            "SUMMARY: AddressSanitizer: SEGV (/tmp/main+0x401204) in main\n"
+            "==35==ABORTING\n",
+            "undefined behaviour: SEGV\n",
+        ),
+        (
+            "1\n2\n3\nmain.c:2:87: runtime error: index 3 out of bounds for type 'int [3]'\n",
+            "undefined behaviour: index 3 out of bounds for type 'int [3]'\n",
+        ),
+        (
+            "main.c: In function 'main':\n"
+            "main.c:2:25: error: 'x' is used uninitialized [-Werror=uninitialized]\n"
+            '    2 | int main(void) { int x; printf("%d\\n", x); }\n'
+            "      |                         ^~~~~~~~~~~~~~~~~\n"
+            "main.c:2:22: note: 'x' was declared here\n"
+            "cc1: some warnings being treated as errors\n",
+            "undefined behaviour: 'x' is used uninitialized\n",
+        ),
+        (
+            "main.c: In function 'main':\n"
+            "main.c:2:53: error: operation on 'i' may be undefined [-Werror=sequence-point]\n"
+            "    2 | int main(void) { int a[3] = {0}; int i = 1; a[i] = i++; }\n"
+            "      |                                                    ~^~\n"
+            "cc1: some warnings being treated as errors\n",
+            "undefined behaviour: operation on 'i' may be undefined\n",
+        ),
+    ],
+)
+def test_normalise_c_undefined_behaviour(output, expected):
+    assert OutputNormaliser.normalise(output, 0) == expected
+
+
+def test_normalise_c_ordinary_compile_error_unchanged():
+    output = "main.c: In function 'main':\nmain.c:3:16: error: implicit declaration of function 'twice' [-Wimplicit-function-declaration]\n"
+    assert OutputNormaliser.normalise(output, 0) == output

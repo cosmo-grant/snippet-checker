@@ -12,7 +12,7 @@ class OutputNormaliser:
     designed for it (e.g. Python traceback pruning for Python; Node traceback pruning for Node) I just run
     all normalisations every time, trusting that normalisations designed for one runtime won't collide with
     normalisations designed for another (e.g. the Python traceback normaliser will never modify a Node snippet
-    output.
+    output. Better make the regexes precise, to reduce collision risk. Beware!
     """
 
     memory_address = re.compile(r"\b0x[0-9A-Fa-f]+\b")
@@ -44,6 +44,12 @@ class OutputNormaliser:
         re.DOTALL,
     )
 
+    c_undefined_behaviour = [
+        re.compile(r"^SUMMARY: AddressSanitizer: (\S+)", re.MULTILINE),
+        re.compile(r"^\S+:\d+:\d+: runtime error: (.*)$", re.MULTILINE),
+        re.compile(r"^\S+:\d+:\d+: error: (.*) \[-Werror=(?:uninitialized|sequence-point)\]$", re.MULTILINE),
+    ]
+
     node_traceback = re.compile(
         r"(?P<location>/tmp/main.js:\d+\n)"
         r"(?P<offending_line>.*\n)"
@@ -56,7 +62,9 @@ class OutputNormaliser:
 
     @classmethod
     def normalise(cls, output: str, output_verbosity: int) -> str:
-        normalised = cls.normalise_memory_addresses(output)
+        normalised = cls.normalise_c_undefined_behaviour(output, output_verbosity)
+
+        normalised = cls.normalise_memory_addresses(normalised)
 
         normalised = cls.normalise_python_traceback(normalised, output_verbosity)
         normalised = cls.normalise_python_location_info(normalised, output_verbosity)
@@ -66,6 +74,19 @@ class OutputNormaliser:
         normalised = cls.normalise_go_stack_overflow(normalised)
 
         normalised = cls.normalise_node_traceback(normalised, output_verbosity)
+
+        return normalised
+
+    @classmethod
+    def normalise_c_undefined_behaviour(cls, output: str, output_verbosity: int) -> str:
+        """Replace the whole output with one line, since undefined behaviour anywhere means undefined behaviour everywhere,
+        as per the standard."""
+        normalised = output
+        if output_verbosity == 0 or output_verbosity == 1:  # I don't see point of distinguishing these.
+            for pattern in cls.c_undefined_behaviour:
+                if match := pattern.search(output):
+                    normalised = f"undefined behaviour: {match.group(1)}\n"
+                    break
 
         return normalised
 
