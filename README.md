@@ -22,6 +22,7 @@ Check code snippets in anki or files via docker.
     - [Normalising exceptions](#normalising-exceptions)
     - [Normalising memory locations](#normalising-memory-locations)
     - [Normalising errnos](#normalising-errnos)
+    - [Normalising undefined behaviour in C](#normalising-undefined-behaviour-in-c)
     - [Normalising hangs](#normalising-hangs)
   - [Q&A](#qa)
     - ["The" output?](#the-output)
@@ -439,6 +440,24 @@ FileNotFoundError: [Errno NN] No such file or directory: 'does_not_exist'
 
 Errnos vary across platforms.
 The tool replaces them all with a placeholder.
+
+### Normalising undefined behaviour in C
+
+```c
+#include <stdlib.h>
+
+int main(void) {
+  char *p = malloc(16);
+  free(p);
+  free(p);
+}
+```
+
+```text
+undefined behaviour: double-free
+```
+
+Assuming you run with a sanitizer (useful e.g. if writing anki notes to learn anti-patterns).
 
 ### Normalising hangs
 
