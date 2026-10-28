@@ -81,8 +81,9 @@ pattern = "(?s)^<pre><samp>(?P<target>.*)</samp></pre>$"
 
 In anki:
 
-- add a tag to the notes you want to check
-  - e.g. `check_me`
+- query for the notes you want to check
+  - e.g. `note:"Code output" tag:python_* -tag:draft`
+  - see anki docs for query syntax
 - to check the outputs, add a tag `snip:runner_image:<image tag>` to the notes
   - e.g. `snip:runner_image:my-python-runner`
 - to check formatting, add a tag `snip:formatter_image:<image tag>` to the notes
@@ -104,15 +105,16 @@ Ensure Docker is running.
 Check outputs:
 
 ```text
-snippet-checker --anki output check_me
+snippet-checker --anki output '<some-anki-query>'
 ```
 
 Check formatting:
 
 ```text
-snippet-checker --anki format check_me
+snippet-checker --anki format '<some-anki-query>'
 ```
 
+The anki query must be a single argument.
 Pass `--interactive` to fix interactively.
 Pass `--fix` to auto-fix (back up your collection first).
 

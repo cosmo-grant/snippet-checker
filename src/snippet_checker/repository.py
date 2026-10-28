@@ -167,7 +167,7 @@ class DirectoryRepository(Repository):
 
 
 class AnkiRepository(Repository):
-    def __init__(self, config: AnkiConfig, tag: str):
+    def __init__(self, config: AnkiConfig, query: str):
         assert (config.profile is not None and config.collection_path is None) or (
             config.profile is None and config.collection_path is not None
         )
@@ -182,13 +182,12 @@ class AnkiRepository(Repository):
 
         self.config = config
         self.collection = Collection(str(path))
-        self.tag = tag
+        self.query = query
 
     def get(self) -> list[Question]:
-        print(f"Looking for snippets in notes tagged '{self.tag}'...")
-        note_ids = self.collection.find_notes("")
-        notes = [self.collection.get_note(id) for id in note_ids]
-        self.notes = [note for note in notes if self.tag in note.tags]
+        print(f"Looking for snippets in notes for query '{self.query}'...")
+        note_ids = self.collection.find_notes(self.query)
+        self.notes = [self.collection.get_note(id) for id in note_ids]
         return [note_to_question(self.config, note) for note in self.notes]
 
     def write_output(self, question: Question, output: str) -> None:

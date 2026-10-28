@@ -25,7 +25,7 @@ mode.add_argument(
 mode.add_argument("-f", "--fix", action="store_const", const="fix", dest="mode", help="Automatically fix fixable failures.")
 parser.set_defaults(mode="check")
 parser.add_argument("command", choices=["output", "format"], help="Command to run.")
-parser.add_argument("target", help="Directory or anki tag of the questions to check.")
+parser.add_argument("target", help="Directory or anki query (e.g. 'note:\"Code output\" tag:python_*') of the snippets to check.")
 
 
 def app() -> int:
