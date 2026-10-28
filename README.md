@@ -322,8 +322,7 @@ to the `snippet_checker.toml`.
 
 ## Examples
 
-`snippet-checker` checks your snippet's _timed, normalised_ output
-(or, really, `run.sh`'s).
+`snippet-checker` checks your snippet's _timed, normalised_ output.
 
 ### Hello world
 
