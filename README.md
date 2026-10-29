@@ -271,7 +271,7 @@ or, for files, add
 
 ```toml
 [runner_images]
-py = "my-go-runner"
+go = "my-go-runner"
 ```
 
 to the `snippet_checker.toml`.
